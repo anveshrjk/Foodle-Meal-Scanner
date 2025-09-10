@@ -44,3 +44,39 @@
   color: #ff6b6b;
   font-weight: bold;
 }
+
+.verdict-wrapper {
+  width: 100%;
+  text-align: center;
+}
+
+.reset-button {
+  margin-top: 1.5rem;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 1px solid #42b883;
+  background-color: transparent;
+  color: #42b883;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.reset-button:hover {
+  background-color: #42b883;
+  color: white;
+}
+
+.reset-profile-button {
+  background: none;
+  border: none;
+  color: #777;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-top: 1rem;
+}
+.reset-profile-button:hover {
+  color: #aaa;
+}

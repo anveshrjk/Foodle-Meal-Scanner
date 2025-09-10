@@ -17,6 +17,12 @@ function HomePage({ userProfile }) {
     }
   }, []);
 
+  // --- THIS IS THE MISSING FUNCTION ---
+  const handleProfileReset = () => {
+    localStorage.removeItem('foodleUserProfile');
+    window.location.reload(); // Reload the page to trigger the onboarding flow
+  };
+
   useEffect(() => {
     const fetchProductData = async () => {
       if (!scannedCode) return;
@@ -53,12 +59,22 @@ function HomePage({ userProfile }) {
         {isLoading && <p>Decoding your food...</p>}
         {error && <p className="error-message">{error}</p>}
         {productData && (
-          <ErrorBoundary>
-            <Verdict productData={productData} userProfile={userProfile} />
-          </ErrorBoundary>
+          <div className="verdict-wrapper">
+            <ErrorBoundary>
+              <Verdict productData={productData} userProfile={userProfile} />
+            </ErrorBoundary>
+            <button onClick={handleNewScanResult} className="reset-button">
+              Scan Another Item
+            </button>
+          </div>
         )}
         {!isLoading && !error && !productData && <p>Your food's story will appear here...</p>}
       </section>
+
+      {/* The button that calls the missing function */}
+      <button onClick={handleProfileReset} className="reset-profile-button">
+        Reset Profile & Start Over
+      </button>
     </div>
   );
 }
