@@ -1,6 +1,7 @@
 .verdict-container {
   width: 100%;
   text-align: center;
+  animation: fadeIn 0.5s ease-in-out;
 }
 
 .verdict-container h3 {
@@ -20,6 +21,7 @@
 .verdict-display h2 {
   margin: 0;
   font-size: 1.5rem;
+  font-weight: 700;
 }
 
 .verdict-reason {
@@ -60,4 +62,9 @@
   font-size: 1.2rem;
   font-weight: bold;
   color: #fff;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }

@@ -1,0 +1,81 @@
+.onboarding-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 600px;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.onboarding-container .logo {
+  width: 120px;
+  margin-bottom: 1rem;
+}
+
+.onboarding-container h1 {
+  color: #eee;
+  margin-bottom: 0.5rem;
+}
+
+.onboarding-container .subtitle {
+  color: #aaa;
+  max-width: 400px;
+  margin-bottom: 3rem;
+}
+
+.options-section {
+  width: 100%;
+  margin-bottom: 2rem;
+}
+
+.options-section h2 {
+  color: #42b883;
+  border-bottom: 1px solid #444;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.button-group {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.button-group button {
+  padding: 10px 20px;
+  border-radius: 20px;
+  border: 1px solid #555;
+  background-color: #333;
+  color: #eee;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.button-group button.active, .button-group button:hover {
+  background-color: #42b883;
+  color: white;
+  border-color: #42b883;
+}
+
+.finish-button {
+  margin-top: 2rem;
+  padding: 15px 40px;
+  border-radius: 10px;
+  border: none;
+  background-color: #42b883;
+  color: white;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.finish-button:hover {
+  transform: scale(1.05);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
