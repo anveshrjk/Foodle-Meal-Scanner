@@ -8,7 +8,7 @@
 <p align="center">
 Instantly search the truth inside your food.
 <br />
-<strong><a href="https://foodle-meal-scanner-mlm3k6oq4-anveshs-projects-9789ac3d.vercel.app/">View the Live Demo</a></strong>
+<strong><a href="https://foodle-meal-scanner-git-main-anveshs-projects-9789ac3d.vercel.app/">View the Live Demo</a></strong>
 </p>
 
 Our Vision
