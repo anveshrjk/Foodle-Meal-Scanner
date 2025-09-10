@@ -35,3 +35,23 @@
   color: #ff6b6b; /* A reddish color for errors */
   font-weight: bold;
 }
+
+.logo {
+  width: 150px;
+  margin-bottom: 2rem;
+}
+
+.verdict-wrapper {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

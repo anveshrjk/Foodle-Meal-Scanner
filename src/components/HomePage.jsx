@@ -56,7 +56,7 @@ function HomePage() {
   return (
     <div className="homepage-container">
       <header className="homepage-header">
-        <h1>Foodle</h1>
+        <img src="/logo.png" alt="Foodle Logo" className="logo" />
       </header>
 
       <main className="scanner-section">
@@ -68,9 +68,11 @@ function HomePage() {
         {error && <p className="error-message">{error}</p>}
         
         {productData && (
-          <ErrorBoundary>
-            <Verdict productData={productData} userProfile={mockUserProfile} />
-          </ErrorBoundary>
+          <div className="verdict-wrapper"> {/* <-- ADD THIS WRAPPER */}
+            <ErrorBoundary>
+              <Verdict productData={productData} userProfile={mockUserProfile} />
+            </ErrorBoundary>
+          </div>
         )}
         
         {!isLoading && !error && !productData && <p>Results will show up here</p>}
