@@ -1,12 +1,26 @@
-# React + Vite
+<br/>
+<p align="center">
+<a href="YOUR_LIVE_VERCEL_LINK_HERE">
+<img src="public/logo.png" alt="Foodle Logo" width="120" height="120">
+</a>
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+<h1 align="center">Foodle</h1>
 
-Currently, two official plugins are available:
+<p align="center">
+Decode your food. Empower your health.
+<br />
+<br />
+<a href="YOUR_LIVE_VERCEL_LINK_HERE"><strong>View Live Demo »</strong></a>
+<br />
+<br />
+<a href="https://github.com/YOUR_USERNAME/foodle-web/issues">Report Bug</a>
+·
+<a href="https://github.com/YOUR_USERNAME/foodle-web/issues">Request Feature</a>
+</p>
+</p>
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+<p align="center">
+<img src="https://img.shields.io/github/languages/code-size/YOUR_USERNAME/foodle-web?style=for-the-badge" />
+<img src="https://img.shields.io/github/commit-activity/m/YOUR_USERNAME/foodle-web?style=for-the-badge" />
+<img src="https://img.shields.io/github/license/YOUR_USERNAME/foodle-web?style=for-the-badge" />
+</p>
