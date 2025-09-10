@@ -1,0 +1,37 @@
+.homepage-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 500px;
+  margin: auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.homepage-header h1 {
+  font-size: 4rem;
+  margin-bottom: 2rem;
+  color: #42b883; /* A nice green color from your logo */
+}
+
+.scanner-section, .results-section {
+  border: 2px dashed #444;
+  border-radius: 8px;
+  padding: 2rem;
+  width: 100%;
+  margin-top: 2rem;
+}
+
+.scanned-code {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #fff;
+  word-wrap: break-word;
+}
+
+.error-message {
+  color: #ff6b6b; /* A reddish color for errors */
+  font-weight: bold;
+}
