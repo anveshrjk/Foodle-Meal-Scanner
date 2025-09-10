@@ -1,0 +1,8 @@
+.app-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start; /* Aligns content to the top */
+  min-height: 100vh;
+  width: 100%;
+  padding: 2rem;
+}

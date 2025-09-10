@@ -6,77 +6,75 @@ import Verdict from './Verdict';
 import ErrorBoundary from './ErrorBoundary';
 
 function HomePage() {
-  // This mock profile simulates a logged-in user for the demo.
-  const mockUserProfile = {
-    goals: ['weight_loss'],
-    conditions: ['diabetes'],
+  const profilePresets = {
+    default: { name: 'default', goals: [], conditions: [] },
+    diabetes: { name: 'diabetes', goals: [], conditions: ['diabetes'] },
+    weight_loss: { name: 'weight_loss', goals: ['weight_loss'], conditions: [] },
   };
 
+  const [userProfile, setUserProfile] = useState(profilePresets.default);
   const [scannedCode, setScannedCode] = useState(null);
   const [productData, setProductData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // This is the stable callback function we pass to the scanner.
   const handleNewScanResult = useCallback((decodedText) => {
     if (decodedText) {
       setScannedCode(decodedText);
     }
   }, []);
 
-  // This effect runs whenever a new barcode is scanned to fetch data.
   useEffect(() => {
     const fetchProductData = async () => {
       if (!scannedCode) return;
-
       setIsLoading(true);
       setError(null);
       setProductData(null);
-
       try {
         const url = `https://world.openfoodfacts.org/api/v2/product/${scannedCode}.json`;
         const response = await axios.get(url);
-        
         if (response.data.status === 1 && response.data.product) {
           setProductData(response.data.product);
         } else {
           setError('Product not found in the database.');
         }
       } catch (err) {
-        console.error("API call failed:", err);
         setError('Failed to fetch data. Please try again.');
       }
-
       setIsLoading(false);
     };
-
     fetchProductData();
   }, [scannedCode]);
 
   return (
     <div className="homepage-container">
-      <header className="homepage-header">
+      <header>
         <img src="/logo.png" alt="Foodle Logo" className="logo" />
       </header>
+
+      <div className="profile-selector">
+        <p>Simulate Profile:</p>
+        <div>
+          <button className={userProfile.name === 'default' ? 'active' : ''} onClick={() => setUserProfile(profilePresets.default)}>Default</button>
+          <button className={userProfile.name === 'diabetes' ? 'active' : ''} onClick={() => setUserProfile(profilePresets.diabetes)}>Diabetes</button>
+          <button className={userProfile.name === 'weight_loss' ? 'active' : ''} onClick={() => setUserProfile(profilePresets.weight_loss)}>Weight Loss</button>
+        </div>
+      </div>
 
       <main className="scanner-section">
         <BarcodeScanner onNewScanResult={handleNewScanResult} />
       </main>
 
-      <footer className="results-section">
+      <section className="results-section">
         {isLoading && <p>Loading...</p>}
         {error && <p className="error-message">{error}</p>}
-        
         {productData && (
-          <div className="verdict-wrapper"> {/* <-- ADD THIS WRAPPER */}
-            <ErrorBoundary>
-              <Verdict productData={productData} userProfile={mockUserProfile} />
-            </ErrorBoundary>
-          </div>
+          <ErrorBoundary>
+            <Verdict productData={productData} userProfile={userProfile} />
+          </ErrorBoundary>
         )}
-        
-        {!isLoading && !error && !productData && <p>Results will show up here</p>}
-      </footer>
+        {!isLoading && !error && !productData && <p>Scan a product to see the results</p>}
+      </section>
     </div>
   );
 }
