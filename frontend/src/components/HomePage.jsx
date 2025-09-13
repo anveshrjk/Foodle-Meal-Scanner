@@ -12,17 +12,21 @@ function HomePage({ userProfile }) {
   const [error, setError] = useState(null);
 
   const handleNewScanResult = useCallback((decodedText) => {
+    // Debouncing Fix: Ignore new scans if one is already processing.
+    if (isLoading) {
+      return;
+    }
     if (decodedText) {
       setScannedCode(decodedText);
     }
-  }, []);
+  }, [isLoading]); // Dependency on isLoading is important
 
-  // --- THIS IS THE MISSING FUNCTION ---
   const handleProfileReset = () => {
     localStorage.removeItem('foodleUserProfile');
-    window.location.reload(); // Reload the page to trigger the onboarding flow
+    window.location.reload();
   };
-
+  
+  // The useEffect for fetching data...
   useEffect(() => {
     const fetchProductData = async () => {
       if (!scannedCode) return;
@@ -39,8 +43,9 @@ function HomePage({ userProfile }) {
         }
       } catch (err) {
         setError('Oops! We had trouble fetching data. Please try again.');
+      } finally {
+        setIsLoading(false); // Ensure loading is set to false in all cases
       }
-      setIsLoading(false);
     };
     fetchProductData();
   }, [scannedCode]);
@@ -50,11 +55,9 @@ function HomePage({ userProfile }) {
       <header>
         <img src="/logo.png" alt="Foodle Logo" className="logo" />
       </header>
-
       <main className="scanner-section">
         <BarcodeScanner onNewScanResult={handleNewScanResult} />
       </main>
-
       <section className="results-section">
         {isLoading && <p>Decoding your food...</p>}
         {error && <p className="error-message">{error}</p>}
@@ -63,15 +66,10 @@ function HomePage({ userProfile }) {
             <ErrorBoundary>
               <Verdict productData={productData} userProfile={userProfile} />
             </ErrorBoundary>
-            <button onClick={handleNewScanResult} className="reset-button">
-              Scan Another Item
-            </button>
           </div>
         )}
         {!isLoading && !error && !productData && <p>Your food's story will appear here...</p>}
       </section>
-
-      {/* The button that calls the missing function */}
       <button onClick={handleProfileReset} className="reset-profile-button">
         Reset Profile & Start Over
       </button>

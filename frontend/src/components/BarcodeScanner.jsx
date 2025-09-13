@@ -3,17 +3,29 @@ import { useEffect, useState, useRef } from 'react';
 
 const BarcodeScanner = ({ onNewScanResult }) => {
   const [isScanning, setIsScanning] = useState(false);
+  const [zoom, setZoom] = useState(1);
   const scannerRef = useRef(null);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    scannerRef.current = new Html5Qrcode('reader');
+    scannerRef.current = new Html5Qrcode('reader', false);
     return () => {
       if (scannerRef.current?.isScanning) {
-        scannerRef.current.stop().catch(err => console.error("Error stopping scanner on cleanup.", err));
+        scannerRef.current.stop().catch(err => console.error("Error stopping scanner.", err));
       }
     };
   }, []);
+
+  const applyZoom = async (newZoom) => {
+    if (scannerRef.current?.isScanning) {
+      const capabilities = await scannerRef.current.getRunningTrackCameraCapabilities();
+      if (capabilities.zoom) {
+        scannerRef.current.applyVideoConstraints({
+          advanced: [{ zoom: newZoom }]
+        });
+      }
+    }
+  };
 
   const handleStart = () => {
     if (!scannerRef.current) return;
@@ -30,7 +42,10 @@ const BarcodeScanner = ({ onNewScanResult }) => {
   const handleStop = () => {
     if (scannerRef.current?.isScanning) {
       scannerRef.current.stop()
-        .then(() => setIsScanning(false))
+        .then(() => {
+          setIsScanning(false);
+          setZoom(1); // Reset zoom on stop
+        })
         .catch(err => console.error("Failed to stop scanner.", err));
     }
   };
@@ -59,14 +74,27 @@ const BarcodeScanner = ({ onNewScanResult }) => {
   return (
     <div style={{ textAlign: 'center' }}>
       <div id="reader" style={{ width: '100%', display: isScanning ? 'block' : 'none', marginBottom: '1rem' }} />
+      {isScanning && (
+        <div className="zoom-slider">
+          <span>Zoom: </span>
+          <input 
+            type="range" min="1" max="5" step="0.1" value={zoom}
+            onChange={(e) => {
+              const newZoom = parseFloat(e.target.value);
+              setZoom(newZoom);
+              applyZoom(newZoom);
+            }} 
+          />
+        </div>
+      )}
       <div className="button-group">
         {!isScanning ? (
           <>
-            <button onClick={handleStart} style={buttonStyle}>Scan Your Food</button>
-            <button onClick={() => fileInputRef.current.click()} style={secondaryButtonStyle}>Upload an Image</button>
+            <button onClick={handleStart} style={buttonStyle}>Start Scanner</button>
+            <button onClick={() => fileInputRef.current.click()} style={secondaryButtonStyle}>Upload Image</button>
           </>
         ) : (
-          <button onClick={handleStop} style={buttonStyle}>Stop Scanning</button>
+          <button onClick={handleStop} style={buttonStyle}>Stop Scanner</button>
         )}
       </div>
       <input 
