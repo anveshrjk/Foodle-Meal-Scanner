@@ -104,5 +104,5 @@ const BarcodeScanner = ({ onNewScanResult }) => {
     </div>
   );
 };
-
+ 
 export default BarcodeScanner;

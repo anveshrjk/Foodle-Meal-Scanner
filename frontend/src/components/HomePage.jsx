@@ -49,7 +49,7 @@ function HomePage({ userProfile }) {
     };
     fetchProductData();
   }, [scannedCode]);
-
+ 
   return (
     <div className="homepage-container">
       <header>
