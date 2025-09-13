@@ -1,6 +1,6 @@
 <br/>
 <p align="center">
-<img src="public/logo.png" alt="Foodle Logo" width="120" height="120">
+<img src="frontend/public/logo.png" alt="Foodle Logo" width="120" height="120">
 </p>
 
 <h1 align="center">Foodle</h1>
