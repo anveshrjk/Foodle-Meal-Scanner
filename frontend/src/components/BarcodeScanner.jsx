@@ -3,19 +3,21 @@ import { useEffect, useState, useRef } from 'react';
 
 const BarcodeScanner = ({ onNewScanResult }) => {
   const [isScanning, setIsScanning] = useState(false);
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(1.0);
   const scannerRef = useRef(null);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    scannerRef.current = new Html5Qrcode('reader', false);
+    const scanner = new Html5Qrcode('reader');
+    scannerRef.current = scanner;
+
     return () => {
       if (scannerRef.current?.isScanning) {
         scannerRef.current.stop().catch(err => console.error("Error stopping scanner.", err));
       }
     };
   }, []);
-
+  
   const applyZoom = async (newZoom) => {
     if (scannerRef.current?.isScanning) {
       const capabilities = await scannerRef.current.getRunningTrackCameraCapabilities();
@@ -28,7 +30,6 @@ const BarcodeScanner = ({ onNewScanResult }) => {
   };
 
   const handleStart = () => {
-    if (!scannerRef.current) return;
     const config = { fps: 10, qrbox: { width: 250, height: 150 } };
     const onScanSuccess = (decodedText) => {
       onNewScanResult(decodedText);
@@ -44,7 +45,7 @@ const BarcodeScanner = ({ onNewScanResult }) => {
       scannerRef.current.stop()
         .then(() => {
           setIsScanning(false);
-          setZoom(1); // Reset zoom on stop
+          setZoom(1.0);
         })
         .catch(err => console.error("Failed to stop scanner.", err));
     }
@@ -72,10 +73,11 @@ const BarcodeScanner = ({ onNewScanResult }) => {
   };
 
   return (
-    <div style={{ textAlign: 'center' }}>
-      <div id="reader" style={{ width: '100%', display: isScanning ? 'block' : 'none', marginBottom: '1rem' }} />
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+      <div id="reader" style={{ width: '100%', display: isScanning ? 'block' : 'none' }} />
+      
       {isScanning && (
-        <div className="zoom-slider">
+        <div className="zoom-slider" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span>Zoom: </span>
           <input 
             type="range" min="1" max="5" step="0.1" value={zoom}
@@ -87,6 +89,7 @@ const BarcodeScanner = ({ onNewScanResult }) => {
           />
         </div>
       )}
+
       <div className="button-group">
         {!isScanning ? (
           <>
@@ -97,6 +100,7 @@ const BarcodeScanner = ({ onNewScanResult }) => {
           <button onClick={handleStop} style={buttonStyle}>Stop Scanner</button>
         )}
       </div>
+
       <input 
         type="file" ref={fileInputRef} onChange={handleFileChange} 
         accept="image/*" style={{ display: 'none' }} 
@@ -104,5 +108,5 @@ const BarcodeScanner = ({ onNewScanResult }) => {
     </div>
   );
 };
- 
+
 export default BarcodeScanner;
