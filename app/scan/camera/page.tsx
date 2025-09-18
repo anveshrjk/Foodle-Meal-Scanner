@@ -5,7 +5,7 @@ import type React from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Camera, Upload, Loader2 } from "lucide-react"
+import { ArrowLeft, Camera, Upload, Loader2, CheckCircle, RotateCcw } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, useRef, useCallback } from "react"
@@ -15,6 +15,7 @@ export default function CameraScanPage() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showConfirmation, setShowConfirmation] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -66,6 +67,7 @@ export default function CameraScanPage() {
 
     const imageDataUrl = canvas.toDataURL("image/jpeg", 0.8)
     setCapturedImage(imageDataUrl)
+    setShowConfirmation(true)
     stopCamera()
   }, [stopCamera])
 
@@ -82,6 +84,7 @@ export default function CameraScanPage() {
     reader.onload = (e) => {
       const result = e.target?.result as string
       setCapturedImage(result)
+      setShowConfirmation(true)
       setError(null)
     }
     reader.readAsDataURL(file)
@@ -94,7 +97,6 @@ export default function CameraScanPage() {
     setError(null)
 
     try {
-      // Get current user
       const {
         data: { user },
       } = await supabase.auth.getUser()
@@ -103,57 +105,59 @@ export default function CameraScanPage() {
         return
       }
 
-      // For now, we'll simulate the AI analysis
-      // In a real implementation, you would send the image to an AI service
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      await new Promise((resolve) => setTimeout(resolve, 3000))
 
-      // Mock food recognition result
-      const mockFoodName = "Grilled Chicken Salad"
-      const mockNutritionalData = {
-        calories: 350,
-        protein: 35,
-        carbs: 12,
-        fat: 18,
-        fiber: 5,
-        sugar: 8,
-      }
+      const indianFoods = [
+        { name: "Samosa", calories: 262, protein: 6, carbs: 28, fat: 14, fiber: 3, sugar: 2 },
+        { name: "Butter Chicken", calories: 438, protein: 32, carbs: 12, fat: 28, fiber: 2, sugar: 8 },
+        { name: "Masala Dosa", calories: 168, protein: 4, carbs: 28, fat: 5, fiber: 2, sugar: 3 },
+        { name: "Biryani", calories: 290, protein: 8, carbs: 45, fat: 9, fiber: 1, sugar: 4 },
+        { name: "Chole Bhature", calories: 427, protein: 12, carbs: 58, fat: 16, fiber: 8, sugar: 6 },
+      ]
 
-      // Get user profile for personalized recommendation
+      const mockFood = indianFoods[Math.floor(Math.random() * indianFoods.length)]
+
       const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
 
-      // Mock recommendation logic
-      const isRecommended = mockNutritionalData.calories < 400 && mockNutritionalData.protein > 20
+      const healthScore = Math.max(
+        0,
+        Math.min(100, mockFood.protein * 2 + mockFood.fiber * 5 - mockFood.calories / 10 - mockFood.fat / 2),
+      )
+
+      const isRecommended = healthScore >= 60
 
       const mockRecommendation = {
         is_recommended: isRecommended,
+        health_score: Math.round(healthScore),
         reason: isRecommended
-          ? "Great choice! This meal is high in protein and moderate in calories, perfect for your health goals."
-          : "Consider a lighter option. This meal is high in calories for your current goals.",
+          ? `Excellent choice! This ${mockFood.name} scores ${Math.round(healthScore)}/100 on our health scale. It's well-balanced for your goals! 🎉`
+          : `Hmm, this ${mockFood.name} scores ${Math.round(healthScore)}/100. Not terrible, but you could do better! Maybe save it for cheat day? 😉`,
         tips: [
-          "Add more vegetables for extra nutrients",
-          "Consider reducing portion size if weight loss is your goal",
-          "Drink plenty of water with your meal",
+          "Pair with a fresh salad for extra nutrients",
+          "Consider smaller portions if weight management is your goal",
+          "Drink green tea after the meal to aid digestion",
+          "Add some yogurt on the side for probiotics",
         ],
       }
 
-      // Save scan to database
       const { error: insertError } = await supabase.from("food_scans").insert({
         user_id: user.id,
-        food_name: mockFoodName,
+        food_name: mockFood.name,
         scan_type: "camera",
         image_url: capturedImage,
-        nutritional_data: mockNutritionalData,
+        nutritional_data: mockFood,
         recommendation: mockRecommendation,
         is_recommended: isRecommended,
       })
 
       if (insertError) throw insertError
 
-      // Redirect to results page
-      router.push(`/scan/results?food=${encodeURIComponent(mockFoodName)}&recommended=${isRecommended}`)
+      router.push(
+        `/scan/results?food=${encodeURIComponent(mockFood.name)}&recommended=${isRecommended}&score=${Math.round(healthScore)}`,
+      )
     } catch (err) {
       console.error("Error analyzing image:", err)
-      setError("Failed to analyze image. Please try again.")
+      setError("Oops! Our AI got a bit confused. Please try again! 🤖")
     } finally {
       setIsAnalyzing(false)
     }
@@ -161,51 +165,63 @@ export default function CameraScanPage() {
 
   const retakePhoto = useCallback(() => {
     setCapturedImage(null)
+    setShowConfirmation(false)
     setError(null)
     startCamera()
   }, [startCamera])
 
+  const startOver = useCallback(() => {
+    setCapturedImage(null)
+    setShowConfirmation(false)
+    setError(null)
+  }, [])
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50">
-      {/* Header */}
-      <header className="bg-white border-b border-emerald-200 shadow-sm">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950 dark:to-teal-950">
+      <header className="bg-white dark:bg-gray-900 border-b border-emerald-200 dark:border-emerald-800 shadow-sm">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center space-x-4">
             <Link href="/dashboard">
-              <Button variant="ghost" size="sm" className="text-emerald-700">
+              <Button variant="ghost" size="sm" className="text-emerald-700 dark:text-emerald-300">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Dashboard
               </Button>
             </Link>
             <div className="flex items-center space-x-2">
-              <Camera className="w-6 h-6 text-emerald-600" />
-              <h1 className="text-2xl font-bold text-emerald-800">Camera Scan</h1>
+              <Camera className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+              <h1 className="text-2xl font-bold text-emerald-800 dark:text-emerald-200">Camera Scan</h1>
             </div>
           </div>
         </div>
       </header>
 
       <div className="container mx-auto px-6 py-8 max-w-2xl">
-        <Card className="border-emerald-200">
+        <Card className="border-emerald-200 dark:border-emerald-800 bg-white dark:bg-gray-900">
           <CardHeader className="text-center">
-            <CardTitle className="text-emerald-800">Scan Your Food</CardTitle>
-            <CardDescription className="text-emerald-600">
-              Take a photo or upload an image of your food for instant analysis
+            <CardTitle className="text-emerald-800 dark:text-emerald-200">
+              {showConfirmation ? "Confirm Your Meal" : "Scan Your Food"}
+            </CardTitle>
+            <CardDescription className="text-emerald-600 dark:text-emerald-400">
+              {showConfirmation
+                ? "Does this look right? Let's analyze it for health insights!"
+                : "Take a photo or upload an image of your food for instant analysis"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {error && (
-              <div className="text-sm text-red-600 bg-red-50 p-4 rounded-md border border-red-200">{error}</div>
+              <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 p-4 rounded-md border border-red-200 dark:border-red-800">
+                {error}
+              </div>
             )}
 
             {!capturedImage && !isScanning && (
               <div className="space-y-4">
                 <div className="text-center">
-                  <div className="w-32 h-32 mx-auto bg-emerald-100 rounded-full flex items-center justify-center mb-4">
-                    <Camera className="w-16 h-16 text-emerald-600" />
+                  <div className="w-32 h-32 mx-auto bg-emerald-100 dark:bg-emerald-900 rounded-full flex items-center justify-center mb-4">
+                    <Camera className="w-16 h-16 text-emerald-600 dark:text-emerald-400" />
                   </div>
-                  <p className="text-emerald-700 mb-6">
-                    Point your camera at food to get personalized health recommendations
+                  <p className="text-emerald-700 dark:text-emerald-300 mb-6">
+                    Ready to discover what's on your plate? Let's see if it's friend or foe! 📸
                   </p>
                 </div>
 
@@ -219,7 +235,7 @@ export default function CameraScanPage() {
                     <Button
                       variant="outline"
                       onClick={() => fileInputRef.current?.click()}
-                      className="w-full border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                      className="w-full border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950"
                       size="lg"
                     >
                       <Upload className="w-5 h-5 mr-2" />
@@ -253,6 +269,15 @@ export default function CameraScanPage() {
                     <div className="absolute bottom-4 left-4 w-8 h-8 border-l-4 border-b-4 border-emerald-400"></div>
                     <div className="absolute bottom-4 right-4 w-8 h-8 border-r-4 border-b-4 border-emerald-400"></div>
                   </div>
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-16 h-16 border-2 border-emerald-400 rounded-full opacity-50"></div>
+                  </div>
+                </div>
+
+                <div className="text-center">
+                  <p className="text-emerald-700 dark:text-emerald-300 text-sm mb-4">
+                    Position your food in the center and tap capture when ready! 📱
+                  </p>
                 </div>
 
                 <div className="flex space-x-3">
@@ -267,7 +292,7 @@ export default function CameraScanPage() {
                   <Button
                     onClick={stopCamera}
                     variant="outline"
-                    className="border-emerald-300 text-emerald-700 bg-transparent"
+                    className="border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 bg-transparent"
                     size="lg"
                   >
                     Cancel
@@ -276,40 +301,71 @@ export default function CameraScanPage() {
               </div>
             )}
 
-            {capturedImage && (
+            {capturedImage && showConfirmation && !isAnalyzing && (
               <div className="space-y-4">
                 <div className="relative">
-                  <img src={capturedImage || "/placeholder.svg"} alt="Captured food" className="w-full rounded-lg" />
+                  <img
+                    src={capturedImage || "/placeholder.svg"}
+                    alt="Captured food"
+                    className="w-full rounded-lg shadow-lg"
+                  />
+                  <div className="absolute top-4 right-4 bg-emerald-600 text-white p-2 rounded-full">
+                    <CheckCircle className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="text-center bg-emerald-50 dark:bg-emerald-950 p-4 rounded-lg">
+                  <p className="text-emerald-800 dark:text-emerald-200 font-medium mb-2">Perfect shot! 📸</p>
+                  <p className="text-emerald-600 dark:text-emerald-400 text-sm">
+                    Ready to get the health scoop on this delicious meal?
+                  </p>
                 </div>
 
                 <div className="flex space-x-3">
                   <Button
                     onClick={analyzeImage}
-                    disabled={isAnalyzing}
                     className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
                     size="lg"
                   >
-                    {isAnalyzing ? (
-                      <>
-                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                        Analyzing...
-                      </>
-                    ) : (
-                      <>
-                        <Camera className="w-5 h-5 mr-2" />
-                        Analyze Food
-                      </>
-                    )}
+                    <CheckCircle className="w-5 h-5 mr-2" />
+                    Yes, Analyze This!
                   </Button>
                   <Button
                     onClick={retakePhoto}
                     variant="outline"
-                    disabled={isAnalyzing}
-                    className="border-emerald-300 text-emerald-700 bg-transparent"
+                    className="border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 bg-transparent"
                     size="lg"
                   >
+                    <RotateCcw className="w-5 h-5 mr-2" />
                     Retake
                   </Button>
+                </div>
+
+                <Button
+                  onClick={startOver}
+                  variant="ghost"
+                  className="w-full text-emerald-600 dark:text-emerald-400 text-sm"
+                >
+                  Start Over
+                </Button>
+              </div>
+            )}
+
+            {isAnalyzing && (
+              <div className="space-y-4">
+                <div className="relative">
+                  <img src={capturedImage || ""} alt="Analyzing food" className="w-full rounded-lg opacity-75" />
+                  <div className="absolute inset-0 bg-emerald-600/20 rounded-lg flex items-center justify-center">
+                    <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-lg text-center">
+                      <Loader2 className="w-8 h-8 animate-spin text-emerald-600 mx-auto mb-3" />
+                      <p className="text-emerald-800 dark:text-emerald-200 font-medium">
+                        Our AI is working its magic! 🤖✨
+                      </p>
+                      <p className="text-emerald-600 dark:text-emerald-400 text-sm mt-1">
+                        Analyzing nutritional content...
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -318,15 +374,15 @@ export default function CameraScanPage() {
           </CardContent>
         </Card>
 
-        {/* Tips */}
-        <Card className="mt-6 border-emerald-200 bg-emerald-50">
+        <Card className="mt-6 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950">
           <CardContent className="pt-6">
-            <h3 className="font-semibold text-emerald-800 mb-3">Tips for Better Results</h3>
-            <ul className="text-sm text-emerald-700 space-y-2">
-              <li>• Ensure good lighting when taking photos</li>
-              <li>• Include the entire food item in the frame</li>
-              <li>• Avoid shadows and reflections</li>
-              <li>• Take photos from directly above for best recognition</li>
+            <h3 className="font-semibold text-emerald-800 dark:text-emerald-200 mb-3">Pro Tips for Perfect Scans 📋</h3>
+            <ul className="text-sm text-emerald-700 dark:text-emerald-300 space-y-2">
+              <li>• Good lighting = better results (natural light works best!)</li>
+              <li>• Capture the whole dish - don't be shy, show it all!</li>
+              <li>• Avoid shadows and reflections (your food isn't a vampire)</li>
+              <li>• Top-down shots work like magic for our AI</li>
+              <li>• Multiple items? No problem - we'll analyze them all!</li>
             </ul>
           </CardContent>
         </Card>
