@@ -277,141 +277,145 @@ export default function CameraScanPage() {
     )
   }
 
-  if (!capturedImage && !isScanning) {
-    return (
-      <div className="min-h-screen bg-background transition-colors duration-300">
-        <Header showBack backHref="/dashboard" title="AI Food Scanner" subtitle="Snap, analyze, discover!" />
-
-        <div className="container mx-auto px-4 py-6 max-w-2xl">
-          <div className="text-center space-y-6">
-            <div className="w-24 h-24 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-              <Camera className="w-12 h-12 text-primary" />
-            </div>
-
-            <div>
-              <h2 className="text-2xl font-bold text-foreground mb-2">Ready to Decode Your Food?</h2>
-              <p className="text-muted-foreground">Point, shoot, and let AI reveal the secrets of your meal!</p>
-            </div>
-
-            {error && (
-              <div className="text-sm text-destructive bg-destructive/10 p-4 rounded-lg border border-destructive/20">
-                {error}
-              </div>
-            )}
-
-            <div className="space-y-4">
-              <Button
-                onClick={startCamera}
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-200"
-                size="lg"
-              >
-                <Camera className="w-5 h-5 mr-2" />
-                Launch Food Scanner
-              </Button>
-
-              <Button
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full border-border text-foreground hover:bg-accent transition-all duration-200"
-                size="lg"
-              >
-                <Upload className="w-5 h-5 mr-2" />
-                Upload from Gallery
-              </Button>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (isScanning) {
-    return (
-      <div className="min-h-screen bg-black">
-        <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={stopCamera}
-            className="text-white hover:bg-white/20 transition-all duration-200"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-        </div>
-
-        <div className="relative w-full h-screen">
-          <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="w-full h-full relative">
-              {/* Vertical lines */}
-              <div className="absolute left-1/3 top-0 bottom-0 w-0.5 bg-white/40"></div>
-              <div className="absolute left-2/3 top-0 bottom-0 w-0.5 bg-white/40"></div>
-              {/* Horizontal lines */}
-              <div className="absolute top-1/3 left-0 right-0 h-0.5 bg-white/40"></div>
-              <div className="absolute top-2/3 left-0 right-0 h-0.5 bg-white/40"></div>
-            </div>
-          </div>
-
-          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex flex-col items-center space-y-4">
-            <Button
-              onClick={capturePhoto}
-              size="lg"
-              className="w-16 h-16 rounded-full bg-white hover:bg-white/90 text-black shadow-lg transition-all duration-200"
-            >
-              <Camera className="w-6 h-6" />
-            </Button>
-            <p className="text-white text-sm text-center bg-black/50 px-3 py-1 rounded-full">
-              Tap to capture
-            </p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
+  // Main scanner interface with live camera preview
   return (
-    <div className="min-h-screen bg-black text-white transition-colors duration-300">
+    <div className="min-h-screen bg-black text-white">
       {/* Header */}
-      <div className="flex items-center justify-between p-4">
+      <div className="flex items-center justify-between p-4 bg-black/80 backdrop-blur-sm">
         <Button
           variant="ghost"
           size="sm"
-          onClick={retakePhoto}
+          onClick={() => router.back()}
           className="text-white hover:bg-white/20 transition-all duration-200"
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
+        <h1 className="text-lg font-semibold text-white">Food Scanner</h1>
+        <div className="w-10" /> {/* Spacer for centering */}
       </div>
 
-      <div className="px-4 pb-4 space-y-6">
-        <div className="relative">
-          <img
-            src={capturedImage || "/placeholder.svg"}
-            alt="Captured food"
-            className="w-full rounded-lg object-cover"
-            style={{ aspectRatio: "4/3" }}
-          />
-          {/* Grid overlay on captured image */}
-          <div className="absolute inset-0 pointer-events-none rounded-lg overflow-hidden">
-            <div className="w-full h-full relative">
-              <div className="absolute left-1/3 top-0 bottom-0 w-0.5 bg-white/30"></div>
-              <div className="absolute left-2/3 top-0 bottom-0 w-0.5 bg-white/30"></div>
-              <div className="absolute top-1/3 left-0 right-0 h-0.5 bg-white/30"></div>
-              <div className="absolute top-2/3 left-0 right-0 h-0.5 bg-white/30"></div>
+      {/* Camera Preview Section */}
+      <div className="relative w-full bg-black">
+        {capturedImage ? (
+          // Captured image display
+          <div className="relative w-full h-64">
+            <img
+              src={capturedImage}
+              alt="Captured food"
+              className="w-full h-full object-cover"
+            />
+            
+            {/* Grid overlay on captured image */}
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="w-full h-full relative">
+                <div className="absolute left-1/3 top-0 bottom-0 w-0.5 bg-white/40"></div>
+                <div className="absolute left-2/3 top-0 bottom-0 w-0.5 bg-white/40"></div>
+                <div className="absolute top-1/3 left-0 right-0 h-0.5 bg-white/40"></div>
+                <div className="absolute top-2/3 left-0 right-0 h-0.5 bg-white/40"></div>
+              </div>
+            </div>
+
+            {/* Retake button overlay */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+              <Button
+                onClick={retakePhoto}
+                size="lg"
+                className="w-12 h-12 rounded-full bg-white hover:bg-white/90 text-black shadow-lg transition-all duration-200"
+              >
+                <RotateCcw className="w-5 h-5" />
+              </Button>
             </div>
           </div>
-        </div>
+        ) : !isScanning ? (
+          // Camera placeholder when not scanning
+          <div className="w-full h-64 bg-gray-800 flex items-center justify-center border-2 border-dashed border-gray-600">
+            <div className="text-center space-y-4">
+              <Camera className="w-12 h-12 text-gray-400 mx-auto" />
+              <div>
+                <p className="text-gray-400 text-sm">Camera Preview</p>
+                <p className="text-gray-500 text-xs">Start scanning to see live feed</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          // Live camera feed
+          <div className="relative w-full h-64">
+            <video 
+              ref={videoRef} 
+              autoPlay 
+              playsInline 
+              muted 
+              className="w-full h-full object-cover"
+            />
+            
+            {/* Grid overlay */}
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="w-full h-full relative">
+                {/* Vertical lines */}
+                <div className="absolute left-1/3 top-0 bottom-0 w-0.5 bg-white/40"></div>
+                <div className="absolute left-2/3 top-0 bottom-0 w-0.5 bg-white/40"></div>
+                {/* Horizontal lines */}
+                <div className="absolute top-1/3 left-0 right-0 h-0.5 bg-white/40"></div>
+                <div className="absolute top-2/3 left-0 right-0 h-0.5 bg-white/40"></div>
+              </div>
+            </div>
 
+            {/* Camera controls overlay */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+              <Button
+                onClick={capturePhoto}
+                size="lg"
+                className="w-12 h-12 rounded-full bg-white hover:bg-white/90 text-black shadow-lg transition-all duration-200"
+              >
+                <Camera className="w-5 h-5" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Food Details Form */}
+      <div className="bg-gray-900 p-4 space-y-6">
+        {error && (
+          <div className="text-sm text-red-400 bg-red-900/20 p-3 rounded-lg border border-red-800">
+            {error}
+          </div>
+        )}
+
+        {/* Start Camera Button */}
+        {!isScanning && (
+          <div className="space-y-4">
+            <Button
+              onClick={startCamera}
+              className="w-full bg-green-600 hover:bg-green-700 text-white transition-all duration-200"
+              size="lg"
+            >
+              <Camera className="w-5 h-5 mr-2" />
+              Start Camera Scanner
+            </Button>
+            
+            <Button
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full border-gray-600 text-white hover:bg-gray-800 transition-all duration-200"
+              size="lg"
+            >
+              <Upload className="w-5 h-5 mr-2" />
+              Upload from Gallery
+            </Button>
+            
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+          </div>
+        )}
+
+        {/* Food Type Selection */}
         <div>
           <h3 className="text-white font-semibold mb-3">Food Type</h3>
           <div className="grid grid-cols-2 gap-2">
@@ -433,6 +437,7 @@ export default function CameraScanPage() {
           </div>
         </div>
 
+        {/* Cooking Method Selection */}
         <div>
           <h3 className="text-white font-semibold mb-3">Cooking Method (multi-select)</h3>
           <div className="grid grid-cols-2 gap-2">
@@ -454,13 +459,21 @@ export default function CameraScanPage() {
           </div>
         </div>
 
+        {/* Oil Quantity Slider */}
         <div>
           <h3 className="text-white font-semibold mb-3">
             Oil / Butter Quantity: {oilQuantity[0] === 50 ? "Default / Normal Oil" : `${oilQuantity[0]}%`}
           </h3>
-          <Slider value={oilQuantity} onValueChange={setOilQuantity} max={100} step={10} className="w-full" />
+          <Slider 
+            value={oilQuantity} 
+            onValueChange={setOilQuantity} 
+            max={100} 
+            step={10} 
+            className="w-full" 
+          />
         </div>
 
+        {/* Meal Details Input */}
         <div>
           <Input
             placeholder="Add meal details 'raw items'"
@@ -470,6 +483,7 @@ export default function CameraScanPage() {
           />
         </div>
 
+        {/* Analysis Progress */}
         {isAnalyzing && (
           <div className="space-y-3 bg-gray-800 p-4 rounded-lg">
             <div className="flex items-center justify-between text-sm">
@@ -480,46 +494,46 @@ export default function CameraScanPage() {
           </div>
         )}
 
-        {error && (
-          <div className="text-sm text-red-400 bg-red-900/20 p-4 rounded-lg border border-red-800">{error}</div>
+        {/* Action Buttons */}
+        {capturedImage && (
+          <div className="flex space-x-3 pt-4">
+            <Button
+              onClick={retakePhoto}
+              variant="outline"
+              disabled={isAnalyzing}
+              className="flex-1 bg-gray-800 border-gray-600 text-white hover:bg-gray-700 transition-all duration-200"
+              size="lg"
+            >
+              <RotateCcw className="w-5 h-5 mr-2" />
+              Retake
+            </Button>
+
+            <Button
+              onClick={analyzeImage}
+              disabled={isAnalyzing}
+              className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white transition-all duration-200 font-semibold"
+              size="lg"
+            >
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <Camera className="w-5 h-5 mr-2" />
+                  Capture & Analyse Meal
+                </>
+              )}
+            </Button>
+          </div>
         )}
-
-        <div className="flex space-x-3 pt-4">
-          <Button
-            onClick={retakePhoto}
-            variant="outline"
-            disabled={isAnalyzing}
-            className="flex-1 bg-gray-800 border-gray-600 text-white hover:bg-gray-700 transition-all duration-200"
-            size="lg"
-          >
-            <RotateCcw className="w-5 h-5 mr-2" />
-            Retake
-          </Button>
-
-          <Button
-            onClick={analyzeImage}
-            disabled={isAnalyzing}
-            className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white transition-all duration-200 font-semibold"
-            size="lg"
-          >
-            {isAnalyzing ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Analyzing...
-              </>
-            ) : (
-              <>
-                <Camera className="w-5 h-5 mr-2" />
-                Capture & Analyse Meal
-              </>
-            )}
-          </Button>
-        </div>
       </div>
 
       <canvas ref={canvasRef} className="hidden" />
     </div>
   )
+
 }
 
 function generatePersonalizedRecommendation(analysis: any, nutrition: any, profile: any) {

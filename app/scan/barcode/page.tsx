@@ -194,210 +194,218 @@ export default function BarcodePage() {
     stopScanner()
   }, [processBarcode, stopScanner])
 
-  if (!scannedProduct && !isScanning) {
-    return (
-      <div className="min-h-screen bg-background transition-colors duration-300">
-        <Header showBack backHref="/dashboard" title="Barcode Scanner" subtitle="Decode packaged foods instantly!" />
+  // Main barcode scanner interface with live camera preview
+  return (
+    <div className="min-h-screen bg-black text-white">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 bg-black/80 backdrop-blur-sm">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.back()}
+          className="text-white hover:bg-white/20 transition-all duration-200"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <h1 className="text-lg font-semibold text-white">Barcode Scanner</h1>
+        <div className="w-10" /> {/* Spacer for centering */}
+      </div>
 
-        <div className="container mx-auto px-4 py-6 max-w-2xl">
-          <div className="text-center space-y-6">
-            <div className="w-24 h-24 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-              <Scan className="w-12 h-12 text-primary" />
-            </div>
-
-            <div>
-              <h2 className="text-2xl font-bold text-foreground mb-2">Barcode Detective Mode</h2>
-              <p className="text-muted-foreground">Scan or enter a barcode to unlock product secrets!</p>
-            </div>
-
-            {error && (
-              <div className="text-sm text-destructive bg-destructive/10 p-4 rounded-lg border border-destructive/20">
-                {error}
+      {/* Camera Preview Section */}
+      <div className="relative w-full bg-black">
+        {!isScanning ? (
+          // Camera placeholder when not scanning
+          <div className="w-full h-64 bg-gray-800 flex items-center justify-center border-2 border-dashed border-gray-600">
+            <div className="text-center space-y-4">
+              <Scan className="w-12 h-12 text-gray-400 mx-auto" />
+              <div>
+                <p className="text-gray-400 text-sm">Barcode Scanner</p>
+                <p className="text-gray-500 text-xs">Start scanning to see live feed</p>
               </div>
-            )}
+            </div>
+          </div>
+        ) : (
+          // Live camera feed with barcode scanning frame
+          <div className="relative w-full h-64">
+            <video 
+              ref={videoRef} 
+              autoPlay 
+              playsInline 
+              muted 
+              className="w-full h-full object-cover"
+            />
+            
+            {/* Barcode scanning frame overlay */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="relative w-48 h-32 border-2 border-white/60 rounded-lg">
+                {/* Corner brackets */}
+                <div className="absolute -top-1 -left-1 w-6 h-6 border-l-4 border-t-4 border-white rounded-tl-lg"></div>
+                <div className="absolute -top-1 -right-1 w-6 h-6 border-r-4 border-t-4 border-white rounded-tr-lg"></div>
+                <div className="absolute -bottom-1 -left-1 w-6 h-6 border-l-4 border-b-4 border-white rounded-bl-lg"></div>
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 border-r-4 border-b-4 border-white rounded-br-lg"></div>
 
-            <div className="space-y-4">
-              <Button
-                onClick={startBarcodeScanner}
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-200"
-                size="lg"
-              >
-                <Scan className="w-5 h-5 mr-2" />
-                Launch Barcode Scanner
-              </Button>
-
-              <div className="space-y-3">
-                <div className="flex space-x-3">
-                  <Input
-                    placeholder="Enter barcode number"
-                    value={manualBarcode}
-                    onChange={(e) => setManualBarcode(e.target.value)}
-                    className="flex-1 border-border focus:border-primary transition-all duration-200"
-                  />
-                  <Button
-                    onClick={handleManualBarcode}
-                    disabled={isAnalyzing || !manualBarcode.trim()}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-200"
-                  >
-                    {isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Lookup"}
-                  </Button>
+                {/* Scanning line animation */}
+                <div className="absolute inset-0 overflow-hidden rounded-lg">
+                  <div
+                    className="absolute w-full h-0.5 bg-red-500 animate-pulse"
+                    style={{
+                      top: "50%",
+                      boxShadow: "0 0 10px rgba(239, 68, 68, 0.8)",
+                    }}
+                  ></div>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
-  if (isScanning) {
-    return (
-      <div className="min-h-screen bg-black">
-        <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={stopScanner}
-            className="text-white hover:bg-white/20 transition-all duration-200"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-        </div>
-
-        <div className="relative w-full h-screen">
-          <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="relative w-80 h-48 border-2 border-white/60 rounded-lg">
-              {/* Corner brackets */}
-              <div className="absolute -top-1 -left-1 w-8 h-8 border-l-4 border-t-4 border-white rounded-tl-lg"></div>
-              <div className="absolute -top-1 -right-1 w-8 h-8 border-r-4 border-t-4 border-white rounded-tr-lg"></div>
-              <div className="absolute -bottom-1 -left-1 w-8 h-8 border-l-4 border-b-4 border-white rounded-bl-lg"></div>
-              <div className="absolute -bottom-1 -right-1 w-8 h-8 border-r-4 border-b-4 border-white rounded-br-lg"></div>
-
-              {/* Scanning line animation */}
-              <div className="absolute inset-0 overflow-hidden rounded-lg">
-                <div
-                  className="absolute w-full h-0.5 bg-red-500 animate-pulse"
-                  style={{
-                    top: "50%",
-                    boxShadow: "0 0 10px rgba(239, 68, 68, 0.8)",
-                  }}
-                ></div>
+            {/* Instructions overlay */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+              <div className="bg-black/80 text-white px-4 py-2 rounded-full text-sm font-medium text-center">
+                Position barcode within the frame
               </div>
             </div>
           </div>
+        )}
+      </div>
 
-          {/* Instructions */}
-          <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2">
-            <div className="bg-black/80 text-white px-4 py-2 rounded-full text-sm font-medium text-center">
-              Position barcode within the frame
-            </div>
+      {/* Controls and Form Section */}
+      <div className="bg-gray-900 p-4 space-y-6">
+        {error && (
+          <div className="text-sm text-red-400 bg-red-900/20 p-3 rounded-lg border border-red-800">
+            {error}
           </div>
+        )}
 
-          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-4">
+        {/* Start Scanner Button */}
+        {!isScanning && (
+          <div className="space-y-4">
             <Button
-              onClick={simulateBarcodeDetection}
-              className="bg-white text-black hover:bg-white/90 transition-all duration-200"
+              onClick={startBarcodeScanner}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white transition-all duration-200"
               size="lg"
             >
-              Simulate Scan
+              <Scan className="w-5 h-5 mr-2" />
+              Start Barcode Scanner
             </Button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="min-h-screen bg-background transition-colors duration-300">
-      <Header showBack backHref="/dashboard" title="Product Details" subtitle="Scanned successfully!" />
-
-      <div className="container mx-auto px-4 py-6 max-w-2xl space-y-6">
-        {/* Product info */}
-        <div className="bg-card border border-border rounded-lg p-6 space-y-4">
-          <div className="flex items-center space-x-3">
-            <Package className="w-6 h-6 text-primary" />
-            <div>
-              <h2 className="text-xl font-bold text-foreground">{scannedProduct.name}</h2>
-              <p className="text-muted-foreground">{scannedProduct.brand}</p>
+            
+            <div className="space-y-3">
+              <div className="flex space-x-3">
+                <Input
+                  placeholder="Enter barcode number manually"
+                  value={manualBarcode}
+                  onChange={(e) => setManualBarcode(e.target.value)}
+                  className="flex-1 bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 transition-all duration-200"
+                />
+                <Button
+                  onClick={handleManualBarcode}
+                  disabled={isAnalyzing || !manualBarcode.trim()}
+                  className="bg-blue-600 hover:bg-blue-700 text-white transition-all duration-200"
+                >
+                  {isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Lookup"}
+                </Button>
+              </div>
             </div>
           </div>
+        )}
 
-          <div className="grid grid-cols-3 gap-4">
-            {[
-              { label: "Calories", value: scannedProduct.calories },
-              { label: "Protein", value: `${scannedProduct.protein}g` },
-              { label: "Carbs", value: `${scannedProduct.carbs}g` },
-              { label: "Fat", value: `${scannedProduct.fat}g` },
-              { label: "Fiber", value: `${scannedProduct.fiber}g` },
-              { label: "Sugar", value: `${scannedProduct.sugar}g` },
-            ].map((item) => (
-              <div key={item.label} className="text-center p-3 bg-accent rounded-lg">
-                <div className="font-semibold text-foreground">{item.value}</div>
-                <div className="text-sm text-muted-foreground">{item.label}</div>
-              </div>
-            ))}
+        {/* Scanner Controls */}
+        {isScanning && (
+          <div className="space-y-4">
+            <Button
+              onClick={simulateBarcodeDetection}
+              className="w-full bg-green-600 hover:bg-green-700 text-white transition-all duration-200"
+              size="lg"
+            >
+              <Scan className="w-5 h-5 mr-2" />
+              Simulate Barcode Detection
+            </Button>
+            
+            <Button
+              onClick={stopScanner}
+              variant="outline"
+              className="w-full border-gray-600 text-white hover:bg-gray-800 transition-all duration-200"
+              size="lg"
+            >
+              Stop Scanner
+            </Button>
           </div>
+        )}
 
-          <div>
-            <h4 className="font-semibold text-foreground mb-2">Ingredients</h4>
-            <p className="text-sm text-muted-foreground">{scannedProduct.ingredients.join(", ")}</p>
-          </div>
-        </div>
-
-        {/* Analysis progress */}
+        {/* Analysis Progress */}
         {isAnalyzing && (
-          <div className="space-y-3 bg-accent p-4 rounded-lg">
+          <div className="space-y-3 bg-gray-800 p-4 rounded-lg">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-foreground font-medium">Analyzing product...</span>
-              <span className="text-foreground font-bold">{Math.round(analysisProgress)}%</span>
+              <span className="text-white font-medium">Analyzing barcode...</span>
+              <span className="text-white font-bold">{Math.round(analysisProgress)}%</span>
             </div>
             <Progress value={analysisProgress} className="h-2" />
           </div>
         )}
 
-        {error && (
-          <div className="text-sm text-destructive bg-destructive/10 p-4 rounded-lg border border-destructive/20">
-            {error}
+        {/* Product Details */}
+        {scannedProduct && (
+          <div className="bg-gray-800 p-4 rounded-lg space-y-4">
+            <div className="flex items-center space-x-3">
+              <Package className="w-6 h-6 text-blue-400" />
+              <div>
+                <h3 className="text-white font-bold">{scannedProduct.name}</h3>
+                <p className="text-gray-400 text-sm">{scannedProduct.brand}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: "Calories", value: scannedProduct.calories },
+                { label: "Protein", value: `${scannedProduct.protein}g` },
+                { label: "Carbs", value: `${scannedProduct.carbs}g` },
+                { label: "Fat", value: `${scannedProduct.fat}g` },
+                { label: "Fiber", value: `${scannedProduct.fiber}g` },
+                { label: "Sugar", value: `${scannedProduct.sugar}g` },
+              ].map((item) => (
+                <div key={item.label} className="text-center p-2 bg-gray-700 rounded">
+                  <div className="font-semibold text-white text-sm">{item.value}</div>
+                  <div className="text-xs text-gray-400">{item.label}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex space-x-3">
+              <Button
+                onClick={analyzeProduct}
+                disabled={isAnalyzing}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white transition-all duration-200"
+                size="lg"
+              >
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Scan className="w-4 h-4 mr-2" />
+                    Get Recommendation
+                  </>
+                )}
+              </Button>
+
+              <Button
+                onClick={() => {
+                  setScannedProduct(null)
+                  setManualBarcode("")
+                  setError(null)
+                }}
+                variant="outline"
+                disabled={isAnalyzing}
+                className="border-gray-600 text-white hover:bg-gray-800 transition-all duration-200"
+                size="lg"
+              >
+                Scan Another
+              </Button>
+            </div>
           </div>
         )}
-
-        <div className="flex space-x-3">
-          <Button
-            onClick={analyzeProduct}
-            disabled={isAnalyzing}
-            className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-200"
-            size="lg"
-          >
-            {isAnalyzing ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Analyzing...
-              </>
-            ) : (
-              <>
-                <Scan className="w-5 h-5 mr-2" />
-                Get Recommendation
-              </>
-            )}
-          </Button>
-
-          <Button
-            onClick={() => {
-              setScannedProduct(null)
-              setManualBarcode("")
-              setError(null)
-            }}
-            variant="outline"
-            disabled={isAnalyzing}
-            className="border-border text-foreground hover:bg-accent transition-all duration-200"
-            size="lg"
-          >
-            Scan Another
-          </Button>
-        </div>
       </div>
     </div>
   )
+
 }
