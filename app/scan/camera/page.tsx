@@ -98,6 +98,10 @@ export default function CameraScanPage() {
         stream.getTracks().forEach(track => track.stop())
       }
 
+      // Show camera immediately
+      setShowCamera(true)
+      setIsScanning(true)
+
       const constraints = {
         video: {
           facingMode: "environment", // Use back camera by default
@@ -113,10 +117,8 @@ export default function CameraScanPage() {
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream
         setStream(mediaStream)
-        setIsScanning(true)
-        setShowCamera(true)
         
-        // Wait for video to be ready
+        // Wait for video to be ready and play
         videoRef.current.onloadedmetadata = () => {
           if (videoRef.current) {
             videoRef.current.play().catch(err => {
@@ -147,8 +149,6 @@ export default function CameraScanPage() {
             if (videoRef.current) {
               videoRef.current.srcObject = basicStream
               setStream(basicStream)
-              setIsScanning(true)
-              setShowCamera(true)
               setCameraError(null)
               
               videoRef.current.onloadedmetadata = () => {
@@ -168,6 +168,8 @@ export default function CameraScanPage() {
       }
       
       setCameraError(errorMessage)
+      setShowCamera(false)
+      setIsScanning(false)
     }
   }, [stream])
 
@@ -404,6 +406,7 @@ export default function CameraScanPage() {
   const retakePhoto = useCallback(() => {
     setCapturedImage(null)
     setError(null)
+    setCameraError(null)
     startCamera()
   }, [startCamera])
 
@@ -423,11 +426,11 @@ export default function CameraScanPage() {
       <Header showBack backHref="/dashboard" title="AI Food Scanner" subtitle="Snap, analyze, discover!" />
 
       <div className="container mx-auto px-4 py-6 max-w-2xl">
-        {/* Camera Preview Section */}
+        {/* Camera Preview Section - Like Snapchat/Instagram */}
         <div className="mb-6">
           <div className="relative w-full bg-black rounded-xl overflow-hidden shadow-lg">
             {capturedImage ? (
-              // Captured image display
+              // Captured image display with action buttons
               <div className="relative w-full h-80">
                 <img
                   src={capturedImage}
@@ -452,7 +455,7 @@ export default function CameraScanPage() {
                   </div>
                 </div>
 
-                {/* Action buttons overlay */}
+                {/* Action buttons overlay - Like Snapchat */}
                 <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-4">
                   <Button
                     onClick={retakePhoto}
@@ -476,7 +479,7 @@ export default function CameraScanPage() {
                 </div>
               </div>
             ) : showCamera ? (
-              // Live camera feed
+              // Live camera feed - Like Instagram/Snapchat
               <div className="relative w-full h-80">
                 <video 
                   ref={videoRef} 
@@ -486,7 +489,7 @@ export default function CameraScanPage() {
                   className="w-full h-full object-cover"
                 />
                 
-                {/* Grid overlay */}
+                {/* Grid overlay for framing */}
                 <div className="absolute inset-0 pointer-events-none">
                   <div className="w-full h-full relative">
                     {/* 3x3 Grid lines */}
@@ -503,7 +506,7 @@ export default function CameraScanPage() {
                   </div>
                 </div>
 
-                {/* Camera controls overlay */}
+                {/* Camera controls overlay - Like Snapchat */}
                 <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-4">
                   <Button
                     onClick={stopCamera}
@@ -515,21 +518,41 @@ export default function CameraScanPage() {
                   <Button
                     onClick={capturePhoto}
                     size="lg"
-                    className="w-16 h-16 rounded-full bg-white hover:bg-white/90 text-black shadow-lg transition-all duration-200 border-4 border-primary/20"
+                    className="w-20 h-20 rounded-full bg-white hover:bg-white/90 text-black shadow-lg transition-all duration-200 border-4 border-gray-300"
                   >
-                    <Camera className="w-7 h-7" />
+                    <Camera className="w-8 h-8" />
                   </Button>
                 </div>
 
-                {/* Instructions overlay */}
+                        {/* Instructions overlay */}
                 <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
                   <div className="bg-black/70 text-white px-4 py-2 rounded-full text-sm font-medium">
-                    Position food in center and tap camera to capture
+                    📸 Position food in center and tap to capture
+                  </div>
+                </div>
+
+                {/* Debug info */}
+                <div className="absolute top-16 left-4">
+                  <div className="bg-black/50 text-white px-2 py-1 rounded text-xs">
+                    Camera: {showCamera ? 'ON' : 'OFF'} | Video: {videoRef.current?.readyState || 'N/A'}
+                  </div>
+                </div>
+              </div>
+            ) : isScanning && !showCamera ? (
+              // Loading state when starting camera
+              <div className="w-full h-80 bg-gray-800 flex items-center justify-center">
+                <div className="text-center space-y-4">
+                  <div className="w-16 h-16 mx-auto bg-primary/20 rounded-full flex items-center justify-center">
+                    <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-lg font-medium">Starting Camera...</p>
+                    <p className="text-gray-500 text-sm">Please allow camera permissions</p>
                   </div>
                 </div>
               </div>
             ) : (
-              // Camera placeholder when not scanning
+              // Camera placeholder - Show this when camera is not active
               <div className="w-full h-80 bg-gray-800 flex items-center justify-center border-2 border-dashed border-gray-600">
                 <div className="text-center space-y-4">
                   <div className="w-16 h-16 mx-auto bg-primary/20 rounded-full flex items-center justify-center">
@@ -537,7 +560,7 @@ export default function CameraScanPage() {
                   </div>
                   <div>
                     <p className="text-gray-400 text-lg font-medium">Camera Preview</p>
-                    <p className="text-gray-500 text-sm">Tap "Snap Your Meal" to start</p>
+                    <p className="text-gray-500 text-sm">Tap "Snap Your Meal" to start camera</p>
                   </div>
                 </div>
               </div>
@@ -545,8 +568,8 @@ export default function CameraScanPage() {
           </div>
         </div>
 
-        {/* Camera Controls */}
-        {!showCamera && !capturedImage && (
+        {/* Camera Controls - Always show when no image captured */}
+        {!capturedImage && (
           <div className="space-y-4 mb-6">
             <Button
               onClick={startCamera}
