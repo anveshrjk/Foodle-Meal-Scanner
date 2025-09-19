@@ -107,6 +107,13 @@ export default function CameraScanPage() {
         videoRef.current.srcObject = mediaStream
         setStream(mediaStream)
         setIsScanning(true)
+        
+        // Add this line to start the video playback
+        videoRef.current.play().catch(err => {
+          console.error("Video play failed:", err)
+          setError("Failed to start the camera preview.")
+        })
+        
         console.log("Camera started successfully")
       }
     } catch (err) {
@@ -130,6 +137,13 @@ export default function CameraScanPage() {
               setStream(basicStream)
               setIsScanning(true)
               setError(null)
+              
+              // Add the .play() call here as well
+              videoRef.current.play().catch(fallbackPlayErr => {
+                  console.error("Fallback video play failed:", fallbackPlayErr)
+                  setError("Failed to start the camera preview.")
+              })
+        
               return
             }
           } catch (fallbackErr) {
