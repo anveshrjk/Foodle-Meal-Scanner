@@ -84,6 +84,12 @@ export default function CameraScanPage() {
         return
       }
 
+      // Check if we're on HTTPS or localhost (required for camera access)
+      if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+        setError("Camera access requires HTTPS. Please use the secure version of the site.")
+        return
+      }
+
       const constraints = {
         video: {
           facingMode: "environment", // Use back camera by default
@@ -114,6 +120,21 @@ export default function CameraScanPage() {
           errorMessage = "No camera found. Please connect a camera and try again."
         } else if (err.name === "NotReadableError") {
           errorMessage = "Camera is already in use by another application."
+        } else if (err.name === "OverconstrainedError") {
+          errorMessage = "Camera doesn't support the required settings. Trying with basic settings..."
+          // Try with basic constraints as fallback
+          try {
+            const basicStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+            if (videoRef.current) {
+              videoRef.current.srcObject = basicStream
+              setStream(basicStream)
+              setIsScanning(true)
+              setError(null)
+              return
+            }
+          } catch (fallbackErr) {
+            console.error("Fallback camera access failed:", fallbackErr)
+          }
         }
       }
       
@@ -239,10 +260,12 @@ export default function CameraScanPage() {
 
       if (!analysisResponse.ok) {
         const errorData = await analysisResponse.json()
+        console.error("Analysis API error:", errorData)
         throw new Error(errorData.error || "Failed to analyze food image")
       }
 
       const { analysis } = await analysisResponse.json()
+      console.log("Food analysis result:", analysis)
       setAnalysisProgress(50)
 
       const nutritionResponse = await fetch("/api/get-nutrition", {
@@ -255,10 +278,13 @@ export default function CameraScanPage() {
       })
 
       if (!nutritionResponse.ok) {
-        throw new Error("Failed to get nutrition data")
+        const errorData = await nutritionResponse.json()
+        console.error("Nutrition API error:", errorData)
+        throw new Error(errorData.error || "Failed to get nutrition data")
       }
 
       const { nutrition } = await nutritionResponse.json()
+      console.log("Nutrition data:", nutrition)
       setAnalysisProgress(80)
 
       const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
@@ -343,10 +369,17 @@ export default function CameraScanPage() {
                 {/* Grid overlay on captured image */}
                 <div className="absolute inset-0 pointer-events-none">
                   <div className="w-full h-full relative">
-                    <div className="absolute left-1/3 top-0 bottom-0 w-0.5 bg-white/40"></div>
-                    <div className="absolute left-2/3 top-0 bottom-0 w-0.5 bg-white/40"></div>
-                    <div className="absolute top-1/3 left-0 right-0 h-0.5 bg-white/40"></div>
-                    <div className="absolute top-2/3 left-0 right-0 h-0.5 bg-white/40"></div>
+                    {/* 3x3 Grid lines */}
+                    <div className="absolute left-1/3 top-0 bottom-0 w-0.5 bg-white/50"></div>
+                    <div className="absolute left-2/3 top-0 bottom-0 w-0.5 bg-white/50"></div>
+                    <div className="absolute top-1/3 left-0 right-0 h-0.5 bg-white/50"></div>
+                    <div className="absolute top-2/3 left-0 right-0 h-0.5 bg-white/50"></div>
+                    
+                    {/* Corner brackets */}
+                    <div className="absolute top-4 left-4 w-8 h-8 border-l-2 border-t-2 border-white/70"></div>
+                    <div className="absolute top-4 right-4 w-8 h-8 border-r-2 border-t-2 border-white/70"></div>
+                    <div className="absolute bottom-4 left-4 w-8 h-8 border-l-2 border-b-2 border-white/70"></div>
+                    <div className="absolute bottom-4 right-4 w-8 h-8 border-r-2 border-b-2 border-white/70"></div>
                   </div>
                 </div>
 
@@ -388,12 +421,17 @@ export default function CameraScanPage() {
                 {/* Grid overlay */}
                 <div className="absolute inset-0 pointer-events-none">
                   <div className="w-full h-full relative">
-                    {/* Vertical lines */}
+                    {/* 3x3 Grid lines */}
                     <div className="absolute left-1/3 top-0 bottom-0 w-0.5 bg-white/50"></div>
                     <div className="absolute left-2/3 top-0 bottom-0 w-0.5 bg-white/50"></div>
-                    {/* Horizontal lines */}
                     <div className="absolute top-1/3 left-0 right-0 h-0.5 bg-white/50"></div>
                     <div className="absolute top-2/3 left-0 right-0 h-0.5 bg-white/50"></div>
+                    
+                    {/* Corner brackets */}
+                    <div className="absolute top-4 left-4 w-8 h-8 border-l-2 border-t-2 border-white/70"></div>
+                    <div className="absolute top-4 right-4 w-8 h-8 border-r-2 border-t-2 border-white/70"></div>
+                    <div className="absolute bottom-4 left-4 w-8 h-8 border-l-2 border-b-2 border-white/70"></div>
+                    <div className="absolute bottom-4 right-4 w-8 h-8 border-r-2 border-b-2 border-white/70"></div>
                   </div>
                 </div>
 
@@ -428,7 +466,7 @@ export default function CameraScanPage() {
               size="lg"
             >
               <Camera className="w-5 h-5 mr-2" />
-              Start Camera Scanner
+              Snap Your Meal
             </Button>
             
             <Button
@@ -558,7 +596,7 @@ export default function CameraScanPage() {
                 ) : (
                   <>
                     <Camera className="w-5 h-5 mr-2" />
-                    Capture & Analyse Meal
+                    Capture and Analyse the Meal
                   </>
                 )}
               </Button>

@@ -73,7 +73,12 @@ export async function POST(req: Request) {
     if (searchResults.length > 0) {
       const bestMatch = searchResults[0]
       object.foodName = bestMatch.name // Use the standardized name from our database
-      object.confidence = Math.min(object.confidence + 0.1, 1.0) // Boost confidence
+      object.confidence = Math.min(object.confidence + 0.15, 1.0) // Boost confidence more
+      
+      // Add more context from our database
+      if (bestMatch.common_names.length > 0) {
+        object.description = `${object.description} Also known as: ${bestMatch.common_names.slice(0, 3).join(', ')}.`
+      }
     }
 
     return Response.json({ analysis: object })
