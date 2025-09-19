@@ -182,6 +182,7 @@ export default function CameraScanPage() {
       const { analysis } = await analysisResponse.json()
       setAnalysisProgress(50)
 
+<<<<<<< HEAD
       // First, try matching against our internal database for higher accuracy
       const matchResponse = await fetch("/api/match-food", {
         method: "POST",
@@ -221,11 +222,35 @@ export default function CameraScanPage() {
 
       const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
       const recommendation = generatePersonalizedRecommendation({ ...analysis, foodName: matchedName }, nutrition, profile)
+=======
+      const nutritionResponse = await fetch("/api/get-nutrition", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          foodName: analysis.foodName,
+          description: analysis.description,
+        }),
+      })
+
+      if (!nutritionResponse.ok) {
+        throw new Error("Failed to get nutrition data")
+      }
+
+      const { nutrition } = await nutritionResponse.json()
+      setAnalysisProgress(80)
+
+      const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
+      const recommendation = generatePersonalizedRecommendation(analysis, nutrition, profile)
+>>>>>>> 5fc23ca2467bb567130c3c0a35d1d6c541b39ba7
       setAnalysisProgress(100)
 
       const { error: insertError } = await supabase.from("food_scans").insert({
         user_id: user.id,
+<<<<<<< HEAD
         food_name: matchedName,
+=======
+        food_name: analysis.foodName,
+>>>>>>> 5fc23ca2467bb567130c3c0a35d1d6c541b39ba7
         scan_type: "camera",
         image_url: capturedImage,
         nutritional_data: nutrition,
@@ -353,6 +378,7 @@ export default function CameraScanPage() {
             </div>
           </div>
 
+<<<<<<< HEAD
           <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex items-center space-x-3">
             <Button
               onClick={capturePhoto}
@@ -361,6 +387,15 @@ export default function CameraScanPage() {
             >
               <Camera className="w-5 h-5 mr-2" />
               Capture & Analyze Meal
+=======
+          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+            <Button
+              onClick={capturePhoto}
+              size="lg"
+              className="w-16 h-16 rounded-full bg-white hover:bg-white/90 text-black shadow-lg transition-all duration-200"
+            >
+              <Camera className="w-6 h-6" />
+>>>>>>> 5fc23ca2467bb567130c3c0a35d1d6c541b39ba7
             </Button>
           </div>
         </div>
@@ -497,7 +532,11 @@ export default function CameraScanPage() {
                 Analyzing...
               </>
             ) : (
+<<<<<<< HEAD
               "Capture & Analyze Meal"
+=======
+              "Continue →"
+>>>>>>> 5fc23ca2467bb567130c3c0a35d1d6c541b39ba7
             )}
           </Button>
         </div>
