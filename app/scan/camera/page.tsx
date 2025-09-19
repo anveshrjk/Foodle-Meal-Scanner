@@ -3,12 +3,33 @@
 import type React from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { Camera, Upload, Loader2, Zap, Target, RotateCcw, CheckCircle } from "lucide-react"
+import { Slider } from "@/components/ui/slider"
+import { Input } from "@/components/ui/input"
+import { Camera, Upload, Loader2, ArrowLeft, RotateCcw } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, useRef, useCallback, useEffect } from "react"
 import { Header } from "@/components/header"
+
+const FOOD_TYPES = [
+  { id: "home_made", label: "Home Made", icon: "🏠" },
+  { id: "packaged", label: "Packaged Food", icon: "📦" },
+  { id: "restaurant", label: "Restaurant / Cafe", icon: "🍽️" },
+  { id: "hostel", label: "Hostel", icon: "🍪" },
+  { id: "street", label: "Street Food", icon: "🌮" },
+  { id: "supplements", label: "Supplements", icon: "💊" },
+]
+
+const COOKING_METHODS = [
+  { id: "not_sure", label: "Not Sure", icon: "❓" },
+  { id: "mixed", label: "Mixed", icon: "🍲" },
+  { id: "air_fried", label: "Air-fried", icon: "🌪️" },
+  { id: "boiled", label: "Boiled", icon: "💧" },
+  { id: "oven_baked", label: "Oven-baked", icon: "🔥" },
+  { id: "raw", label: "Raw", icon: "🥗" },
+  { id: "stir_fried", label: "Stir-fried", icon: "🥢" },
+  { id: "roasted", label: "Roasted", icon: "🔥" },
+]
 
 export default function CameraScanPage() {
   const [isScanning, setIsScanning] = useState(false)
@@ -17,7 +38,13 @@ export default function CameraScanPage() {
   const [analysisProgress, setAnalysisProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [stream, setStream] = useState<MediaStream | null>(null)
-  const [showCaptureSuccess, setShowCaptureSuccess] = useState(false)
+
+  // Form state
+  const [selectedFoodTypes, setSelectedFoodTypes] = useState<string[]>([])
+  const [selectedCookingMethods, setSelectedCookingMethods] = useState<string[]>([])
+  const [oilQuantity, setOilQuantity] = useState([50])
+  const [mealDetails, setMealDetails] = useState("")
+
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -49,43 +76,33 @@ export default function CameraScanPage() {
   const startCamera = useCallback(async () => {
     try {
       setError(null)
-      console.log("[v0] Starting camera...")
 
       const constraints = {
         video: {
-          facingMode: "environment", // Use back camera on mobile
+          facingMode: "environment",
           width: { ideal: 1920, max: 1920 },
           height: { ideal: 1080, max: 1080 },
-          aspectRatio: { ideal: 4 / 3 }, // Better for food photos
+          aspectRatio: { ideal: 4 / 3 },
         },
         audio: false,
       }
 
       const mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
-      console.log("[v0] Camera stream obtained")
 
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream
         setStream(mediaStream)
         setIsScanning(true)
-
-        videoRef.current.onloadedmetadata = () => {
-          console.log("[v0] Video metadata loaded, camera ready")
-        }
       }
     } catch (err) {
-      console.error("[v0] Error accessing camera:", err)
-      setError("Unable to access camera. Please check permissions and try again, or upload an image instead.")
+      console.error("Error accessing camera:", err)
+      setError("Unable to access camera. Please check permissions and try again.")
     }
   }, [])
 
   const stopCamera = useCallback(() => {
-    console.log("[v0] Stopping camera...")
     if (stream) {
-      stream.getTracks().forEach((track) => {
-        track.stop()
-        console.log("[v0] Camera track stopped")
-      })
+      stream.getTracks().forEach((track) => track.stop())
       setStream(null)
     }
     if (videoRef.current) {
@@ -95,34 +112,21 @@ export default function CameraScanPage() {
   }, [stream])
 
   const capturePhoto = useCallback(() => {
-    if (!videoRef.current || !canvasRef.current) {
-      console.log("[v0] Video or canvas ref not available")
-      return
-    }
+    if (!videoRef.current || !canvasRef.current) return
 
     const video = videoRef.current
     const canvas = canvasRef.current
     const context = canvas.getContext("2d")
 
-    if (!context) {
-      console.log("[v0] Canvas context not available")
-      return
-    }
-
-    console.log("[v0] Capturing photo...")
+    if (!context) return
 
     canvas.width = video.videoWidth || 1280
     canvas.height = video.videoHeight || 720
 
     context.drawImage(video, 0, 0, canvas.width, canvas.height)
 
-    const imageDataUrl = canvas.toDataURL("image/jpeg", 0.95) // Higher quality
+    const imageDataUrl = canvas.toDataURL("image/jpeg", 0.95)
     setCapturedImage(imageDataUrl)
-    console.log("[v0] Photo captured successfully")
-
-    setShowCaptureSuccess(true)
-    setTimeout(() => setShowCaptureSuccess(false), 1000)
-
     stopCamera()
   }, [stopCamera])
 
@@ -159,12 +163,16 @@ export default function CameraScanPage() {
         return
       }
 
-      console.log("[v0] Starting AI food analysis...")
-
       const analysisResponse = await fetch("/api/analyze-food", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: capturedImage }),
+        body: JSON.stringify({
+          image: capturedImage,
+          foodTypes: selectedFoodTypes,
+          cookingMethods: selectedCookingMethods,
+          oilQuantity: oilQuantity[0],
+          mealDetails,
+        }),
       })
 
       if (!analysisResponse.ok) {
@@ -172,8 +180,6 @@ export default function CameraScanPage() {
       }
 
       const { analysis } = await analysisResponse.json()
-      console.log("[v0] Food analysis result:", analysis)
-
       setAnalysisProgress(50)
 
       const nutritionResponse = await fetch("/api/get-nutrition", {
@@ -190,14 +196,10 @@ export default function CameraScanPage() {
       }
 
       const { nutrition } = await nutritionResponse.json()
-      console.log("[v0] Nutrition data:", nutrition)
-
       setAnalysisProgress(80)
 
       const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
-
       const recommendation = generatePersonalizedRecommendation(analysis, nutrition, profile)
-
       setAnalysisProgress(100)
 
       const { error: insertError } = await supabase.from("food_scans").insert({
@@ -209,6 +211,10 @@ export default function CameraScanPage() {
         recommendation: recommendation,
         is_recommended: recommendation.is_recommended,
         confidence: Math.round(analysis.confidence * 100),
+        food_types: selectedFoodTypes,
+        cooking_methods: selectedCookingMethods,
+        oil_quantity: oilQuantity[0],
+        meal_details: mealDetails,
       })
 
       if (insertError) throw insertError
@@ -223,7 +229,7 @@ export default function CameraScanPage() {
       setIsAnalyzing(false)
       setAnalysisProgress(0)
     }
-  }, [capturedImage, supabase, router])
+  }, [capturedImage, supabase, router, selectedFoodTypes, selectedCookingMethods, oilQuantity, mealDetails])
 
   const retakePhoto = useCallback(() => {
     setCapturedImage(null)
@@ -231,245 +237,248 @@ export default function CameraScanPage() {
     startCamera()
   }, [startCamera])
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Header showBack backHref="/dashboard" title="AI Food Scanner" subtitle="Snap, analyze, discover!" />
+  const toggleFoodType = (typeId: string) => {
+    setSelectedFoodTypes((prev) => (prev.includes(typeId) ? prev.filter((id) => id !== typeId) : [...prev, typeId]))
+  }
 
-      <div className="container mx-auto px-4 py-6 max-w-2xl">
-        {!capturedImage && !isScanning && (
-          <Card className="border-border bg-card shadow-lg">
-            <CardHeader className="text-center pb-4">
-              <CardTitle className="text-foreground">Ready to Decode Your Food? 🕵️</CardTitle>
-              <CardDescription className="text-muted-foreground">
-                Point, shoot, and let AI reveal the secrets of your meal!
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {error && (
-                <div className="text-sm text-destructive bg-destructive/10 p-4 rounded-lg border border-destructive/20">
-                  {error}
-                </div>
-              )}
+  const toggleCookingMethod = (methodId: string) => {
+    setSelectedCookingMethods((prev) =>
+      prev.includes(methodId) ? prev.filter((id) => id !== methodId) : [...prev, methodId],
+    )
+  }
 
-              <div className="space-y-6">
-                <div className="text-center">
-                  <div className="w-24 h-24 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                    <Camera className="w-12 h-12 text-primary" />
-                  </div>
-                  <p className="text-foreground mb-6 font-medium">
-                    Transform any food into health insights instantly! ✨
-                  </p>
-                  <div className="flex items-center justify-center space-x-6 text-sm text-muted-foreground">
-                    <div className="flex items-center space-x-2">
-                      <Zap className="w-4 h-4 text-primary" />
-                      <span>GPT-4 Vision</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Target className="w-4 h-4 text-primary" />
-                      <span>Real-time Analysis</span>
-                    </div>
-                  </div>
-                </div>
+  if (!capturedImage && !isScanning) {
+    return (
+      <div className="min-h-screen bg-background transition-colors duration-300">
+        <Header showBack backHref="/dashboard" title="AI Food Scanner" subtitle="Snap, analyze, discover!" />
 
-                <div className="space-y-3">
-                  <Button
-                    onClick={startCamera}
-                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-                    size="lg"
-                  >
-                    <Camera className="w-5 h-5 mr-2" />
-                    Launch Food Scanner 📸
-                  </Button>
-
-                  <div className="relative">
-                    <Button
-                      variant="outline"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-full border-border text-foreground hover:bg-accent"
-                      size="lg"
-                    >
-                      <Upload className="w-5 h-5 mr-2" />
-                      Upload from Gallery 📱
-                    </Button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {isScanning && (
-          <div className="space-y-4">
-            <Card className="border-border bg-card overflow-hidden">
-              <div className="relative bg-black">
-                <video ref={videoRef} autoPlay playsInline muted className="w-full h-[70vh] object-cover" />
-
-                <div className="absolute inset-0 pointer-events-none">
-                  {/* Corner brackets */}
-                  <div className="absolute top-8 left-8 w-12 h-12 border-l-4 border-t-4 border-primary rounded-tl-2xl"></div>
-                  <div className="absolute top-8 right-8 w-12 h-12 border-r-4 border-t-4 border-primary rounded-tr-2xl"></div>
-                  <div className="absolute bottom-8 left-8 w-12 h-12 border-l-4 border-b-4 border-primary rounded-bl-2xl"></div>
-                  <div className="absolute bottom-8 right-8 w-12 h-12 border-r-4 border-b-4 border-primary rounded-br-2xl"></div>
-
-                  {/* Center scanning area */}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-64 h-64 border-2 border-primary/60 rounded-2xl bg-primary/5 backdrop-blur-sm flex items-center justify-center">
-                      <div className="text-center">
-                        <Target className="w-8 h-8 text-primary mx-auto mb-2 animate-pulse" />
-                        <p className="text-white text-sm font-medium bg-black/70 px-3 py-1 rounded-full">
-                          Position food here
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Top instruction */}
-                  <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
-                    <div className="bg-black/80 text-white px-4 py-2 rounded-full text-sm font-medium">
-                      🍽️ Center your food in the frame
-                    </div>
-                  </div>
-                </div>
-
-                {showCaptureSuccess && (
-                  <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                    <div className="bg-primary text-primary-foreground p-4 rounded-full">
-                      <CheckCircle className="w-8 h-8" />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </Card>
-
-            <div className="flex items-center justify-center space-x-4 py-4">
-              <Button
-                onClick={stopCamera}
-                variant="outline"
-                size="lg"
-                className="px-6 border-border text-muted-foreground hover:bg-accent bg-transparent"
-              >
-                Cancel
-              </Button>
-
-              <Button
-                onClick={capturePhoto}
-                size="lg"
-                className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-4 text-lg rounded-full shadow-lg"
-              >
-                <Camera className="w-6 h-6 mr-2" />
-                Capture 📸
-              </Button>
-
-              <Button
-                onClick={() => {
-                  stopCamera()
-                  setTimeout(startCamera, 100)
-                }}
-                variant="outline"
-                size="lg"
-                className="px-6 border-border text-muted-foreground hover:bg-accent"
-              >
-                <RotateCcw className="w-5 h-5" />
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {capturedImage && (
-          <div className="space-y-4">
-            <div className="relative">
-              <img
-                src={capturedImage || "/placeholder.svg"}
-                alt="Captured food"
-                className="w-full rounded-lg shadow-md max-h-[50vh] object-cover"
-              />
-              {!isAnalyzing && (
-                <div className="absolute inset-0 bg-black/10 rounded-lg flex items-center justify-center">
-                  <div className="bg-white dark:bg-gray-800 px-6 py-3 rounded-full shadow-lg">
-                    <div className="flex items-center space-x-2">
-                      <Zap className="w-5 h-5 text-emerald-600" />
-                      <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                        Ready for AI analysis
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
+        <div className="container mx-auto px-4 py-6 max-w-2xl">
+          <div className="text-center space-y-6">
+            <div className="w-24 h-24 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+              <Camera className="w-12 h-12 text-primary" />
             </div>
 
-            {isAnalyzing && (
-              <div className="space-y-3 bg-emerald-50 dark:bg-gray-800 p-4 rounded-lg">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-emerald-700 dark:text-emerald-300 font-medium">AI analyzing food...</span>
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                    {Math.round(analysisProgress)}%
-                  </span>
-                </div>
-                <Progress value={analysisProgress} className="h-3" />
-                <div className="text-xs text-emerald-600 dark:text-emerald-400 text-center">
-                  {analysisProgress < 30 && "🔍 Processing image with AI vision..."}
-                  {analysisProgress >= 30 && analysisProgress < 60 && "🧠 Identifying food with GPT-4..."}
-                  {analysisProgress >= 60 && analysisProgress < 90 && "📊 Searching nutrition database..."}
-                  {analysisProgress >= 90 && "✨ Generating personalized insights..."}
-                </div>
+            <div>
+              <h2 className="text-2xl font-bold text-foreground mb-2">Ready to Decode Your Food?</h2>
+              <p className="text-muted-foreground">Point, shoot, and let AI reveal the secrets of your meal!</p>
+            </div>
+
+            {error && (
+              <div className="text-sm text-destructive bg-destructive/10 p-4 rounded-lg border border-destructive/20">
+                {error}
               </div>
             )}
 
-            <div className="flex space-x-3">
+            <div className="space-y-4">
               <Button
-                onClick={analyzeImage}
-                disabled={isAnalyzing}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600 text-white text-lg py-3"
+                onClick={startCamera}
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-200"
                 size="lg"
               >
-                {isAnalyzing ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <Zap className="w-5 h-5 mr-2" />
-                    Analyze Food
-                  </>
-                )}
+                <Camera className="w-5 h-5 mr-2" />
+                Launch Food Scanner
               </Button>
+
               <Button
-                onClick={retakePhoto}
                 variant="outline"
-                disabled={isAnalyzing}
-                className="px-6 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 bg-transparent"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full border-border text-foreground hover:bg-accent transition-all duration-200"
                 size="lg"
               >
-                Retake
+                <Upload className="w-5 h-5 mr-2" />
+                Upload from Gallery
               </Button>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
             </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (isScanning) {
+    return (
+      <div className="min-h-screen bg-black">
+        <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={stopCamera}
+            className="text-white hover:bg-white/20 transition-all duration-200"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+        </div>
+
+        <div className="relative w-full h-screen">
+          <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="w-full h-full relative">
+              {/* Vertical lines */}
+              <div className="absolute left-1/3 top-0 bottom-0 w-0.5 bg-white/40"></div>
+              <div className="absolute left-2/3 top-0 bottom-0 w-0.5 bg-white/40"></div>
+              {/* Horizontal lines */}
+              <div className="absolute top-1/3 left-0 right-0 h-0.5 bg-white/40"></div>
+              <div className="absolute top-2/3 left-0 right-0 h-0.5 bg-white/40"></div>
+            </div>
+          </div>
+
+          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+            <Button
+              onClick={capturePhoto}
+              size="lg"
+              className="w-16 h-16 rounded-full bg-white hover:bg-white/90 text-black shadow-lg transition-all duration-200"
+            >
+              <Camera className="w-6 h-6" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-black text-white transition-colors duration-300">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={retakePhoto}
+          className="text-white hover:bg-white/20 transition-all duration-200"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+      </div>
+
+      <div className="px-4 pb-4 space-y-6">
+        <div className="relative">
+          <img
+            src={capturedImage || "/placeholder.svg"}
+            alt="Captured food"
+            className="w-full rounded-lg object-cover"
+            style={{ aspectRatio: "4/3" }}
+          />
+          {/* Grid overlay on captured image */}
+          <div className="absolute inset-0 pointer-events-none rounded-lg overflow-hidden">
+            <div className="w-full h-full relative">
+              <div className="absolute left-1/3 top-0 bottom-0 w-0.5 bg-white/30"></div>
+              <div className="absolute left-2/3 top-0 bottom-0 w-0.5 bg-white/30"></div>
+              <div className="absolute top-1/3 left-0 right-0 h-0.5 bg-white/30"></div>
+              <div className="absolute top-2/3 left-0 right-0 h-0.5 bg-white/30"></div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-white font-semibold mb-3">Food Type</h3>
+          <div className="grid grid-cols-2 gap-2">
+            {FOOD_TYPES.map((type) => (
+              <Button
+                key={type.id}
+                variant={selectedFoodTypes.includes(type.id) ? "default" : "outline"}
+                onClick={() => toggleFoodType(type.id)}
+                className={`justify-start text-left transition-all duration-200 ${
+                  selectedFoodTypes.includes(type.id)
+                    ? "bg-white text-black hover:bg-white/90"
+                    : "bg-transparent border-gray-600 text-white hover:bg-white/10"
+                }`}
+              >
+                <span className="mr-2">{type.icon}</span>
+                {type.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-white font-semibold mb-3">Cooking Method (multi-select)</h3>
+          <div className="grid grid-cols-2 gap-2">
+            {COOKING_METHODS.map((method) => (
+              <Button
+                key={method.id}
+                variant={selectedCookingMethods.includes(method.id) ? "default" : "outline"}
+                onClick={() => toggleCookingMethod(method.id)}
+                className={`justify-start text-left transition-all duration-200 ${
+                  selectedCookingMethods.includes(method.id)
+                    ? "bg-white text-black hover:bg-white/90"
+                    : "bg-transparent border-gray-600 text-white hover:bg-white/10"
+                }`}
+              >
+                <span className="mr-2">{method.icon}</span>
+                {method.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-white font-semibold mb-3">
+            Oil / Butter Quantity: {oilQuantity[0] === 50 ? "Default / Normal Oil" : `${oilQuantity[0]}%`}
+          </h3>
+          <Slider value={oilQuantity} onValueChange={setOilQuantity} max={100} step={10} className="w-full" />
+        </div>
+
+        <div>
+          <Input
+            placeholder="Add meal details 'raw items'"
+            value={mealDetails}
+            onChange={(e) => setMealDetails(e.target.value)}
+            className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 transition-all duration-200"
+          />
+        </div>
+
+        {isAnalyzing && (
+          <div className="space-y-3 bg-gray-800 p-4 rounded-lg">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-white font-medium">AI analyzing food...</span>
+              <span className="text-white font-bold">{Math.round(analysisProgress)}%</span>
+            </div>
+            <Progress value={analysisProgress} className="h-2" />
           </div>
         )}
 
-        <Card className="mt-6 border-border bg-accent/50">
-          <CardContent className="pt-6">
-            <h3 className="font-semibold text-foreground mb-3 flex items-center">
-              <Target className="w-5 h-5 mr-2 text-primary" />
-              Pro Tips for Perfect Scans 🎯
-            </h3>
-            <ul className="text-sm text-muted-foreground space-y-2">
-              <li>• 💡 Ensure bright, natural lighting</li>
-              <li>• 🎯 Fill the frame with your food</li>
-              <li>• 🚫 Avoid shadows and reflections</li>
-              <li>• 📐 Shoot from directly above for best results</li>
-              <li>• 🌍 Works with ALL cuisines - Indian, Chinese, Italian, and more!</li>
-            </ul>
-          </CardContent>
-        </Card>
+        {error && (
+          <div className="text-sm text-red-400 bg-red-900/20 p-4 rounded-lg border border-red-800">{error}</div>
+        )}
+
+        <div className="flex space-x-3 pt-4">
+          <Button
+            onClick={retakePhoto}
+            variant="outline"
+            disabled={isAnalyzing}
+            className="flex-1 bg-gray-800 border-gray-600 text-white hover:bg-gray-700 transition-all duration-200"
+            size="lg"
+          >
+            <RotateCcw className="w-5 h-5 mr-2" />
+            Retake
+          </Button>
+
+          <Button
+            onClick={analyzeImage}
+            disabled={isAnalyzing}
+            className="flex-1 bg-white text-black hover:bg-white/90 transition-all duration-200"
+            size="lg"
+          >
+            {isAnalyzing ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Analyzing...
+              </>
+            ) : (
+              "Continue →"
+            )}
+          </Button>
+        </div>
       </div>
 
       <canvas ref={canvasRef} className="hidden" />

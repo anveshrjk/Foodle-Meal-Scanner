@@ -2,10 +2,9 @@
 
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Scan, Loader2, Package } from "lucide-react"
+import { Progress } from "@/components/ui/progress"
+import { Scan, Loader2, Package, ArrowLeft } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, useRef, useCallback } from "react"
 import { Header } from "@/components/header"
@@ -51,8 +50,10 @@ export default function BarcodePage() {
   const [isScanning, setIsScanning] = useState(false)
   const [manualBarcode, setManualBarcode] = useState("")
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [analysisProgress, setAnalysisProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [scannedProduct, setScannedProduct] = useState<any>(null)
+  const [stream, setStream] = useState<MediaStream | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const router = useRouter()
   const supabase = createClient()
@@ -60,16 +61,21 @@ export default function BarcodePage() {
   const startBarcodeScanner = useCallback(async () => {
     try {
       setError(null)
-      const stream = await navigator.mediaDevices.getUserMedia({
+
+      const constraints = {
         video: {
           facingMode: "environment",
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          width: { ideal: 1920, max: 1920 },
+          height: { ideal: 1080, max: 1080 },
         },
-      })
+        audio: false,
+      }
+
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
 
       if (videoRef.current) {
-        videoRef.current.srcObject = stream
+        videoRef.current.srcObject = mediaStream
+        setStream(mediaStream)
         setIsScanning(true)
       }
     } catch (err) {
@@ -79,37 +85,46 @@ export default function BarcodePage() {
   }, [])
 
   const stopScanner = useCallback(() => {
-    if (videoRef.current?.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream
+    if (stream) {
       stream.getTracks().forEach((track) => track.stop())
+      setStream(null)
+    }
+    if (videoRef.current) {
       videoRef.current.srcObject = null
     }
     setIsScanning(false)
-  }, [])
+  }, [stream])
 
   const processBarcode = useCallback(async (barcode: string) => {
     setIsAnalyzing(true)
+    setAnalysisProgress(0)
     setError(null)
 
     try {
-      // Simulate barcode lookup delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const progressInterval = setInterval(() => {
+        setAnalysisProgress((prev) => Math.min(prev + 10, 90))
+      }, 100)
 
-      // Look up product in mock database
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      clearInterval(progressInterval)
+
       const product = mockBarcodeDatabase[barcode]
 
       if (!product) {
         setError(`Product not found for barcode: ${barcode}. Try a different product or use manual search.`)
         setIsAnalyzing(false)
+        setAnalysisProgress(0)
         return
       }
 
+      setAnalysisProgress(100)
       setScannedProduct(product)
     } catch (err) {
       console.error("Error processing barcode:", err)
       setError("Failed to process barcode. Please try again.")
     } finally {
       setIsAnalyzing(false)
+      setTimeout(() => setAnalysisProgress(0), 1000)
     }
   }, [])
 
@@ -128,7 +143,6 @@ export default function BarcodePage() {
     setError(null)
 
     try {
-      // Get current user
       const {
         data: { user },
       } = await supabase.auth.getUser()
@@ -137,10 +151,7 @@ export default function BarcodePage() {
         return
       }
 
-      // Get user profile for personalized recommendation
       const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
-
-      // Mock recommendation logic
       const isRecommended = scannedProduct.calories < 200 && scannedProduct.protein > 5 && scannedProduct.sugar < 10
 
       const mockRecommendation = {
@@ -155,7 +166,6 @@ export default function BarcodePage() {
         ],
       }
 
-      // Save scan to database
       const { error: insertError } = await supabase.from("food_scans").insert({
         user_id: user.id,
         food_name: scannedProduct.name,
@@ -168,7 +178,6 @@ export default function BarcodePage() {
 
       if (insertError) throw insertError
 
-      // Redirect to results page
       router.push(`/scan/results?food=${encodeURIComponent(scannedProduct.name)}&recommended=${isRecommended}`)
     } catch (err) {
       console.error("Error analyzing product:", err)
@@ -178,7 +187,6 @@ export default function BarcodePage() {
     }
   }, [scannedProduct, supabase, router, manualBarcode])
 
-  // Mock barcode detection (in real app, you'd use a barcode scanning library)
   const simulateBarcodeDetection = useCallback(() => {
     const mockBarcodes = Object.keys(mockBarcodeDatabase)
     const randomBarcode = mockBarcodes[Math.floor(Math.random() * mockBarcodes.length)]
@@ -186,233 +194,209 @@ export default function BarcodePage() {
     stopScanner()
   }, [processBarcode, stopScanner])
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 dark:from-primary/10 dark:via-primary/20 dark:to-primary/10">
-      <Header showBack backHref="/dashboard" title="Barcode Scanner" subtitle="Decode packaged foods instantly! 📦" />
+  if (!scannedProduct && !isScanning) {
+    return (
+      <div className="min-h-screen bg-background transition-colors duration-300">
+        <Header showBack backHref="/dashboard" title="Barcode Scanner" subtitle="Decode packaged foods instantly!" />
 
-      <div className="container mx-auto px-6 py-8 max-w-2xl">
-        <Card className="border-primary/20">
-          <CardHeader className="text-center">
-            <CardTitle className="text-foreground">🔍 Barcode Detective Mode</CardTitle>
-            <CardDescription className="text-muted-foreground">
-              Scan or enter a barcode to unlock product secrets!
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
+        <div className="container mx-auto px-4 py-6 max-w-2xl">
+          <div className="text-center space-y-6">
+            <div className="w-24 h-24 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+              <Scan className="w-12 h-12 text-primary" />
+            </div>
+
+            <div>
+              <h2 className="text-2xl font-bold text-foreground mb-2">Barcode Detective Mode</h2>
+              <p className="text-muted-foreground">Scan or enter a barcode to unlock product secrets!</p>
+            </div>
+
             {error && (
-              <div className="text-sm text-destructive bg-destructive/10 p-4 rounded-md border border-destructive/20">
+              <div className="text-sm text-destructive bg-destructive/10 p-4 rounded-lg border border-destructive/20">
                 {error}
               </div>
             )}
 
-            {!scannedProduct && !isScanning && (
-              <div className="space-y-6">
-                <div className="text-center">
-                  <div className="w-32 h-32 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                    <Scan className="w-16 h-16 text-primary" />
-                  </div>
-                  <p className="text-foreground mb-6 font-medium">🕵️ Ready to decode your food's secrets?</p>
-                </div>
+            <div className="space-y-4">
+              <Button
+                onClick={startBarcodeScanner}
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-200"
+                size="lg"
+              >
+                <Scan className="w-5 h-5 mr-2" />
+                Launch Barcode Scanner
+              </Button>
 
-                <Button
-                  onClick={startBarcodeScanner}
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-                  size="lg"
-                >
-                  <Scan className="w-5 h-5 mr-2" />
-                  Launch Barcode Scanner 🚀
-                </Button>
-
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-border" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">Or</span>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <Label htmlFor="barcode" className="text-foreground">
-                    Enter Barcode Manually
-                  </Label>
-                  <div className="flex space-x-3">
-                    <Input
-                      id="barcode"
-                      placeholder="Enter barcode number"
-                      value={manualBarcode}
-                      onChange={(e) => setManualBarcode(e.target.value)}
-                      className="flex-1 border-border focus:border-primary"
-                    />
-                    <Button
-                      onClick={handleManualBarcode}
-                      disabled={isAnalyzing || !manualBarcode.trim()}
-                      className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                    >
-                      {isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Lookup"}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {isScanning && (
-              <div className="space-y-4">
-                <div className="relative">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    className="w-full rounded-lg bg-black"
-                    style={{ aspectRatio: "16/9" }}
+              <div className="space-y-3">
+                <div className="flex space-x-3">
+                  <Input
+                    placeholder="Enter barcode number"
+                    value={manualBarcode}
+                    onChange={(e) => setManualBarcode(e.target.value)}
+                    className="flex-1 border-border focus:border-primary transition-all duration-200"
                   />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-64 h-32 border-4 border-primary/40 rounded-lg">
-                      <div className="absolute top-2 left-2 w-6 h-6 border-l-4 border-t-4 border-primary/40"></div>
-                      <div className="absolute top-2 right-2 w-6 h-6 border-r-4 border-t-4 border-primary/40"></div>
-                      <div className="absolute bottom-2 left-2 w-6 h-6 border-l-4 border-b-4 border-primary/40"></div>
-                      <div className="absolute bottom-2 right-2 w-6 h-6 border-r-4 border-b-4 border-primary/40"></div>
-                    </div>
-                  </div>
-                </div>
-
-                <p className="text-center text-foreground">Position the barcode within the frame</p>
-
-                <div className="flex space-x-3">
                   <Button
-                    onClick={simulateBarcodeDetection}
-                    className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
-                    size="lg"
+                    onClick={handleManualBarcode}
+                    disabled={isAnalyzing || !manualBarcode.trim()}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-200"
                   >
-                    Simulate Scan
-                  </Button>
-                  <Button
-                    onClick={stopScanner}
-                    variant="outline"
-                    className="border-primary/30 text-primary hover:bg-primary/5 bg-transparent"
-                    size="lg"
-                  >
-                    Cancel
+                    {isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Lookup"}
                   </Button>
                 </div>
               </div>
-            )}
-
-            {scannedProduct && (
-              <div className="space-y-4">
-                <Card className="border-primary/20 bg-accent/50">
-                  <CardHeader>
-                    <div className="flex items-center space-x-2">
-                      <Package className="w-5 h-5 text-primary" />
-                      <CardTitle className="text-foreground">{scannedProduct.name}</CardTitle>
-                    </div>
-                    <CardDescription className="text-muted-foreground">{scannedProduct.brand}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                      <div className="text-center p-3 bg-background rounded-lg">
-                        <div className="font-semibold text-foreground">{scannedProduct.calories}</div>
-                        <div className="text-muted-foreground">Calories</div>
-                      </div>
-                      <div className="text-center p-3 bg-background rounded-lg">
-                        <div className="font-semibold text-foreground">{scannedProduct.protein}g</div>
-                        <div className="text-muted-foreground">Protein</div>
-                      </div>
-                      <div className="text-center p-3 bg-background rounded-lg">
-                        <div className="font-semibold text-foreground">{scannedProduct.carbs}g</div>
-                        <div className="text-muted-foreground">Carbs</div>
-                      </div>
-                      <div className="text-center p-3 bg-background rounded-lg">
-                        <div className="font-semibold text-foreground">{scannedProduct.fat}g</div>
-                        <div className="text-muted-foreground">Fat</div>
-                      </div>
-                      <div className="text-center p-3 bg-background rounded-lg">
-                        <div className="font-semibold text-foreground">{scannedProduct.fiber}g</div>
-                        <div className="text-muted-foreground">Fiber</div>
-                      </div>
-                      <div className="text-center p-3 bg-background rounded-lg">
-                        <div className="font-semibold text-foreground">{scannedProduct.sugar}g</div>
-                        <div className="text-muted-foreground">Sugar</div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="font-semibold text-foreground mb-2">Ingredients</h4>
-                      <p className="text-sm text-foreground">{scannedProduct.ingredients.join(", ")}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <div className="flex space-x-3">
-                  <Button
-                    onClick={analyzeProduct}
-                    disabled={isAnalyzing}
-                    className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
-                    size="lg"
-                  >
-                    {isAnalyzing ? (
-                      <>
-                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                        Analyzing...
-                      </>
-                    ) : (
-                      <>
-                        <Scan className="w-5 h-5 mr-2" />
-                        Get Recommendation
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setScannedProduct(null)
-                      setManualBarcode("")
-                      setError(null)
-                    }}
-                    variant="outline"
-                    disabled={isAnalyzing}
-                    className="border-primary/30 text-primary hover:bg-primary/5"
-                    size="lg"
-                  >
-                    Scan Another
-                  </Button>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Demo Barcodes */}
-        <Card className="mt-6 border-primary/20 bg-accent/50">
-          <CardHeader>
-            <CardTitle className="text-foreground">🎯 Try These Demo Barcodes</CardTitle>
-            <CardDescription className="text-muted-foreground">
-              Test the scanner with these sample products
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {Object.entries(mockBarcodeDatabase).map(([barcode, product]) => (
-                <div key={barcode} className="flex items-center justify-between p-2 bg-background rounded">
-                  <div>
-                    <span className="font-mono text-sm text-foreground">{barcode}</span>
-                    <span className="ml-3 text-muted-foreground">{product.name}</span>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setManualBarcode(barcode)
-                      processBarcode(barcode)
-                    }}
-                    className="border-primary/30 text-primary hover:bg-primary/5"
-                  >
-                    Try
-                  </Button>
-                </div>
-              ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (isScanning) {
+    return (
+      <div className="min-h-screen bg-black">
+        <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={stopScanner}
+            className="text-white hover:bg-white/20 transition-all duration-200"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+        </div>
+
+        <div className="relative w-full h-screen">
+          <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="relative w-80 h-48 border-2 border-white/60 rounded-lg">
+              {/* Corner brackets */}
+              <div className="absolute -top-1 -left-1 w-8 h-8 border-l-4 border-t-4 border-white rounded-tl-lg"></div>
+              <div className="absolute -top-1 -right-1 w-8 h-8 border-r-4 border-t-4 border-white rounded-tr-lg"></div>
+              <div className="absolute -bottom-1 -left-1 w-8 h-8 border-l-4 border-b-4 border-white rounded-bl-lg"></div>
+              <div className="absolute -bottom-1 -right-1 w-8 h-8 border-r-4 border-b-4 border-white rounded-br-lg"></div>
+
+              {/* Scanning line animation */}
+              <div className="absolute inset-0 overflow-hidden rounded-lg">
+                <div
+                  className="absolute w-full h-0.5 bg-red-500 animate-pulse"
+                  style={{
+                    top: "50%",
+                    boxShadow: "0 0 10px rgba(239, 68, 68, 0.8)",
+                  }}
+                ></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Instructions */}
+          <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2">
+            <div className="bg-black/80 text-white px-4 py-2 rounded-full text-sm font-medium text-center">
+              Position barcode within the frame
+            </div>
+          </div>
+
+          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-4">
+            <Button
+              onClick={simulateBarcodeDetection}
+              className="bg-white text-black hover:bg-white/90 transition-all duration-200"
+              size="lg"
+            >
+              Simulate Scan
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-background transition-colors duration-300">
+      <Header showBack backHref="/dashboard" title="Product Details" subtitle="Scanned successfully!" />
+
+      <div className="container mx-auto px-4 py-6 max-w-2xl space-y-6">
+        {/* Product info */}
+        <div className="bg-card border border-border rounded-lg p-6 space-y-4">
+          <div className="flex items-center space-x-3">
+            <Package className="w-6 h-6 text-primary" />
+            <div>
+              <h2 className="text-xl font-bold text-foreground">{scannedProduct.name}</h2>
+              <p className="text-muted-foreground">{scannedProduct.brand}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { label: "Calories", value: scannedProduct.calories },
+              { label: "Protein", value: `${scannedProduct.protein}g` },
+              { label: "Carbs", value: `${scannedProduct.carbs}g` },
+              { label: "Fat", value: `${scannedProduct.fat}g` },
+              { label: "Fiber", value: `${scannedProduct.fiber}g` },
+              { label: "Sugar", value: `${scannedProduct.sugar}g` },
+            ].map((item) => (
+              <div key={item.label} className="text-center p-3 bg-accent rounded-lg">
+                <div className="font-semibold text-foreground">{item.value}</div>
+                <div className="text-sm text-muted-foreground">{item.label}</div>
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-foreground mb-2">Ingredients</h4>
+            <p className="text-sm text-muted-foreground">{scannedProduct.ingredients.join(", ")}</p>
+          </div>
+        </div>
+
+        {/* Analysis progress */}
+        {isAnalyzing && (
+          <div className="space-y-3 bg-accent p-4 rounded-lg">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-foreground font-medium">Analyzing product...</span>
+              <span className="text-foreground font-bold">{Math.round(analysisProgress)}%</span>
+            </div>
+            <Progress value={analysisProgress} className="h-2" />
+          </div>
+        )}
+
+        {error && (
+          <div className="text-sm text-destructive bg-destructive/10 p-4 rounded-lg border border-destructive/20">
+            {error}
+          </div>
+        )}
+
+        <div className="flex space-x-3">
+          <Button
+            onClick={analyzeProduct}
+            disabled={isAnalyzing}
+            className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-200"
+            size="lg"
+          >
+            {isAnalyzing ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Analyzing...
+              </>
+            ) : (
+              <>
+                <Scan className="w-5 h-5 mr-2" />
+                Get Recommendation
+              </>
+            )}
+          </Button>
+
+          <Button
+            onClick={() => {
+              setScannedProduct(null)
+              setManualBarcode("")
+              setError(null)
+            }}
+            variant="outline"
+            disabled={isAnalyzing}
+            className="border-border text-foreground hover:bg-accent transition-all duration-200"
+            size="lg"
+          >
+            Scan Another
+          </Button>
+        </div>
       </div>
     </div>
   )
