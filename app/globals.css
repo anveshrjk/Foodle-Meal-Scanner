@@ -122,7 +122,110 @@
   * {
     @apply border-border outline-ring/50;
   }
+
+  /* Added smooth theme transitions for all elements */
+  html {
+    transition: color-scheme 0.3s ease-in-out;
+  }
+
   body {
     @apply bg-background text-foreground;
+    transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
+  }
+
+  /* Smooth transitions for all interactive elements */
+  button,
+  input,
+  textarea,
+  select {
+    transition: all 0.2s ease-in-out;
+  }
+
+  /* Enhanced card and component transitions */
+  [class*="bg-card"],
+  [class*="bg-accent"],
+  [class*="bg-muted"] {
+    transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out;
+  }
+
+  /* Smooth border transitions */
+  [class*="border"] {
+    transition: border-color 0.3s ease-in-out;
+  }
+
+  /* Text color transitions */
+  [class*="text-"] {
+    transition: color 0.3s ease-in-out;
+  }
+}
+
+/* Added custom animations for better UX */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+/* Enhanced focus states with smooth transitions */
+.focus-visible\:ring-2:focus-visible {
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+/* Smooth hover transitions for buttons */
+.hover\:bg-accent:hover,
+.hover\:bg-primary\/90:hover,
+.hover\:bg-destructive\/90:hover {
+  transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+}
+
+/* Performance optimization for theme switching */
+.dark * {
+  transition: inherit;
+}
+
+/* Reduced motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

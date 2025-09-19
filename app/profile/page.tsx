@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,10 +9,10 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowLeft, Save, User } from "lucide-react"
-import Link from "next/link"
+import { Save } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
+import { Header } from "@/components/header"
 
 interface Profile {
   id: string
@@ -144,85 +143,69 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center">
-        <div className="text-emerald-600">Loading profile...</div>
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 dark:from-primary/10 dark:via-primary/20 dark:to-primary/10 flex items-center justify-center">
+        <div className="text-primary-foreground">Loading profile...</div>
       </div>
     )
   }
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center">
-        <div className="text-red-600">Failed to load profile</div>
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 dark:from-primary/10 dark:via-primary/20 dark:to-primary/10 flex items-center justify-center">
+        <div className="text-destructive">Failed to load profile</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50">
-      {/* Header */}
-      <header className="bg-white border-b border-emerald-200 shadow-sm">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center space-x-4">
-            <Link href="/dashboard">
-              <Button variant="ghost" size="sm" className="text-emerald-700">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Dashboard
-              </Button>
-            </Link>
-            <div className="flex items-center space-x-2">
-              <User className="w-6 h-6 text-emerald-600" />
-              <h1 className="text-2xl font-bold text-emerald-800">Your Profile</h1>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 dark:from-primary/10 dark:via-primary/20 dark:to-primary/10">
+      <Header showBack backHref="/dashboard" title="Your Profile" subtitle="Personalize your food journey! 🎯" />
 
       <div className="container mx-auto px-6 py-8 max-w-4xl">
         <form onSubmit={handleSave} className="space-y-8">
           {/* Basic Information */}
-          <Card className="border-emerald-200">
+          <Card className="border-primary/20">
             <CardHeader>
-              <CardTitle className="text-emerald-800">Basic Information</CardTitle>
-              <CardDescription className="text-emerald-600">
-                Your personal details and contact information
+              <CardTitle className="text-foreground">✨ Basic Information</CardTitle>
+              <CardDescription className="text-muted-foreground">
+                Tell us about yourself so we can create magic together!
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-emerald-700">
+                  <Label htmlFor="name" className="text-foreground">
                     Full Name
                   </Label>
                   <Input
                     id="name"
                     value={profile.name || ""}
                     onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                    className="border-emerald-200 focus:border-emerald-400"
+                    className="border-border focus:border-primary"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-emerald-700">
+                  <Label htmlFor="email" className="text-foreground">
                     Email
                   </Label>
-                  <Input id="email" value={profile.email || ""} disabled className="border-emerald-200 bg-emerald-50" />
+                  <Input id="email" value={profile.email || ""} disabled className="border-border bg-accent" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Physical Information */}
-          <Card className="border-emerald-200">
+          <Card className="border-primary/20">
             <CardHeader>
-              <CardTitle className="text-emerald-800">Physical Information</CardTitle>
-              <CardDescription className="text-emerald-600">
+              <CardTitle className="text-foreground">Physical Information</CardTitle>
+              <CardDescription className="text-muted-foreground">
                 Help us provide personalized recommendations
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid md:grid-cols-4 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="age" className="text-emerald-700">
+                  <Label htmlFor="age" className="text-foreground">
                     Age
                   </Label>
                   <Input
@@ -230,18 +213,18 @@ export default function ProfilePage() {
                     type="number"
                     value={profile.age || ""}
                     onChange={(e) => setProfile({ ...profile, age: Number.parseInt(e.target.value) || null })}
-                    className="border-emerald-200 focus:border-emerald-400"
+                    className="border-border focus:border-primary"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="gender" className="text-emerald-700">
+                  <Label htmlFor="gender" className="text-foreground">
                     Gender
                   </Label>
                   <Select
                     value={profile.gender || ""}
                     onValueChange={(value) => setProfile({ ...profile, gender: value })}
                   >
-                    <SelectTrigger className="border-emerald-200 focus:border-emerald-400">
+                    <SelectTrigger className="border-border focus:border-primary">
                       <SelectValue placeholder="Select gender" />
                     </SelectTrigger>
                     <SelectContent>
@@ -252,7 +235,7 @@ export default function ProfilePage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="weight" className="text-emerald-700">
+                  <Label htmlFor="weight" className="text-foreground">
                     Weight (kg)
                   </Label>
                   <Input
@@ -261,11 +244,11 @@ export default function ProfilePage() {
                     step="0.1"
                     value={profile.weight_kg || ""}
                     onChange={(e) => setProfile({ ...profile, weight_kg: Number.parseFloat(e.target.value) || null })}
-                    className="border-emerald-200 focus:border-emerald-400"
+                    className="border-border focus:border-primary"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="height" className="text-emerald-700">
+                  <Label htmlFor="height" className="text-foreground">
                     Height (cm)
                   </Label>
                   <Input
@@ -273,19 +256,19 @@ export default function ProfilePage() {
                     type="number"
                     value={profile.height_cm || ""}
                     onChange={(e) => setProfile({ ...profile, height_cm: Number.parseFloat(e.target.value) || null })}
-                    className="border-emerald-200 focus:border-emerald-400"
+                    className="border-border focus:border-primary"
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="activity" className="text-emerald-700">
+                <Label htmlFor="activity" className="text-foreground">
                   Activity Level
                 </Label>
                 <Select
                   value={profile.activity_level || ""}
                   onValueChange={(value) => setProfile({ ...profile, activity_level: value })}
                 >
-                  <SelectTrigger className="border-emerald-200 focus:border-emerald-400">
+                  <SelectTrigger className="border-border focus:border-primary">
                     <SelectValue placeholder="Select activity level" />
                   </SelectTrigger>
                   <SelectContent>
@@ -305,10 +288,10 @@ export default function ProfilePage() {
           </Card>
 
           {/* Dietary Preferences */}
-          <Card className="border-emerald-200">
+          <Card className="border-primary/20">
             <CardHeader>
-              <CardTitle className="text-emerald-800">Dietary Preferences</CardTitle>
-              <CardDescription className="text-emerald-600">
+              <CardTitle className="text-foreground">Dietary Preferences</CardTitle>
+              <CardDescription className="text-muted-foreground">
                 Select any dietary restrictions or preferences you follow
               </CardDescription>
             </CardHeader>
@@ -323,7 +306,7 @@ export default function ProfilePage() {
                         handleArrayChange("dietary_restrictions", option, checked as boolean)
                       }
                     />
-                    <Label htmlFor={option} className="text-emerald-700 capitalize">
+                    <Label htmlFor={option} className="text-foreground capitalize">
                       {option.replace("_", " ")}
                     </Label>
                   </div>
@@ -333,10 +316,10 @@ export default function ProfilePage() {
           </Card>
 
           {/* Health Goals */}
-          <Card className="border-emerald-200">
+          <Card className="border-primary/20">
             <CardHeader>
-              <CardTitle className="text-emerald-800">Health Goals</CardTitle>
-              <CardDescription className="text-emerald-600">
+              <CardTitle className="text-foreground">Health Goals</CardTitle>
+              <CardDescription className="text-muted-foreground">
                 What are your primary health and fitness goals?
               </CardDescription>
             </CardHeader>
@@ -349,7 +332,7 @@ export default function ProfilePage() {
                       checked={(profile.health_goals || []).includes(goal)}
                       onCheckedChange={(checked) => handleArrayChange("health_goals", goal, checked as boolean)}
                     />
-                    <Label htmlFor={goal} className="text-emerald-700 capitalize">
+                    <Label htmlFor={goal} className="text-foreground capitalize">
                       {goal.replace("_", " ")}
                     </Label>
                   </div>
@@ -359,10 +342,10 @@ export default function ProfilePage() {
           </Card>
 
           {/* Allergies */}
-          <Card className="border-emerald-200">
+          <Card className="border-primary/20">
             <CardHeader>
-              <CardTitle className="text-emerald-800">Food Allergies</CardTitle>
-              <CardDescription className="text-emerald-600">
+              <CardTitle className="text-foreground">Food Allergies</CardTitle>
+              <CardDescription className="text-muted-foreground">
                 Select any food allergies you have for safety recommendations
               </CardDescription>
             </CardHeader>
@@ -375,7 +358,7 @@ export default function ProfilePage() {
                       checked={(profile.allergies || []).includes(allergy)}
                       onCheckedChange={(checked) => handleArrayChange("allergies", allergy, checked as boolean)}
                     />
-                    <Label htmlFor={allergy} className="text-emerald-700 capitalize">
+                    <Label htmlFor={allergy} className="text-foreground capitalize">
                       {allergy.replace("_", " ")}
                     </Label>
                   </div>
@@ -385,10 +368,10 @@ export default function ProfilePage() {
           </Card>
 
           {/* Medical Conditions */}
-          <Card className="border-emerald-200">
+          <Card className="border-primary/20">
             <CardHeader>
-              <CardTitle className="text-emerald-800">Medical Conditions</CardTitle>
-              <CardDescription className="text-emerald-600">
+              <CardTitle className="text-foreground">Medical Conditions</CardTitle>
+              <CardDescription className="text-muted-foreground">
                 List any medical conditions that affect your diet (optional)
               </CardDescription>
             </CardHeader>
@@ -403,7 +386,7 @@ export default function ProfilePage() {
                     .filter((c) => c)
                   setProfile({ ...profile, medical_conditions: conditions })
                 }}
-                className="border-emerald-200 focus:border-emerald-400"
+                className="border-border focus:border-primary"
                 rows={3}
               />
             </CardContent>
@@ -413,17 +396,23 @@ export default function ProfilePage() {
           <div className="flex items-center justify-between">
             <div>
               {error && (
-                <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md border border-red-200">{error}</div>
+                <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md border border-destructive/20">
+                  {error}
+                </div>
               )}
               {success && (
-                <div className="text-sm text-green-600 bg-green-50 p-3 rounded-md border border-green-200">
-                  Profile saved successfully!
+                <div className="text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950 p-3 rounded-md border border-green-200 dark:border-green-800">
+                  🎉 Profile saved successfully!
                 </div>
               )}
             </div>
-            <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white px-8" disabled={isSaving}>
+            <Button
+              type="submit"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground px-8"
+              disabled={isSaving}
+            >
               <Save className="w-4 h-4 mr-2" />
-              {isSaving ? "Saving..." : "Save Profile"}
+              {isSaving ? "Saving..." : "Save Profile ✨"}
             </Button>
           </div>
         </form>
