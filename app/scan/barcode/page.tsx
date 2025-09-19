@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft, Scan, Loader2, Package } from "lucide-react"
-import Link from "next/link"
+import { Scan, Loader2, Package } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, useRef, useCallback } from "react"
+import { Header } from "@/components/header"
 
 // Mock barcode database
 const mockBarcodeDatabase: Record<string, any> = {
@@ -187,69 +187,53 @@ export default function BarcodePage() {
   }, [processBarcode, stopScanner])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50">
-      {/* Header */}
-      <header className="bg-white border-b border-emerald-200 shadow-sm">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center space-x-4">
-            <Link href="/dashboard">
-              <Button variant="ghost" size="sm" className="text-emerald-700">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Dashboard
-              </Button>
-            </Link>
-            <div className="flex items-center space-x-2">
-              <Scan className="w-6 h-6 text-emerald-600" />
-              <h1 className="text-2xl font-bold text-emerald-800">Barcode Scanner</h1>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 dark:from-primary/10 dark:via-primary/20 dark:to-primary/10">
+      <Header showBack backHref="/dashboard" title="Barcode Scanner" subtitle="Decode packaged foods instantly! 📦" />
 
       <div className="container mx-auto px-6 py-8 max-w-2xl">
-        <Card className="border-emerald-200">
+        <Card className="border-primary/20">
           <CardHeader className="text-center">
-            <CardTitle className="text-emerald-800">Scan Product Barcode</CardTitle>
-            <CardDescription className="text-emerald-600">
-              Scan or enter a barcode to get detailed product information
+            <CardTitle className="text-foreground">🔍 Barcode Detective Mode</CardTitle>
+            <CardDescription className="text-muted-foreground">
+              Scan or enter a barcode to unlock product secrets!
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {error && (
-              <div className="text-sm text-red-600 bg-red-50 p-4 rounded-md border border-red-200">{error}</div>
+              <div className="text-sm text-destructive bg-destructive/10 p-4 rounded-md border border-destructive/20">
+                {error}
+              </div>
             )}
 
             {!scannedProduct && !isScanning && (
               <div className="space-y-6">
                 <div className="text-center">
-                  <div className="w-32 h-32 mx-auto bg-emerald-100 rounded-full flex items-center justify-center mb-4">
-                    <Scan className="w-16 h-16 text-emerald-600" />
+                  <div className="w-32 h-32 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                    <Scan className="w-16 h-16 text-primary" />
                   </div>
-                  <p className="text-emerald-700 mb-6">
-                    Scan the barcode on packaged foods for instant nutritional analysis
-                  </p>
+                  <p className="text-foreground mb-6 font-medium">🕵️ Ready to decode your food's secrets?</p>
                 </div>
 
                 <Button
                   onClick={startBarcodeScanner}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
                   size="lg"
                 >
                   <Scan className="w-5 h-5 mr-2" />
-                  Start Barcode Scanner
+                  Launch Barcode Scanner 🚀
                 </Button>
 
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-emerald-200" />
+                    <span className="w-full border-t border-border" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-white px-2 text-emerald-600">Or</span>
+                    <span className="bg-background px-2 text-muted-foreground">Or</span>
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  <Label htmlFor="barcode" className="text-emerald-700">
+                  <Label htmlFor="barcode" className="text-foreground">
                     Enter Barcode Manually
                   </Label>
                   <div className="flex space-x-3">
@@ -258,12 +242,12 @@ export default function BarcodePage() {
                       placeholder="Enter barcode number"
                       value={manualBarcode}
                       onChange={(e) => setManualBarcode(e.target.value)}
-                      className="flex-1 border-emerald-200 focus:border-emerald-400"
+                      className="flex-1 border-border focus:border-primary"
                     />
                     <Button
                       onClick={handleManualBarcode}
                       disabled={isAnalyzing || !manualBarcode.trim()}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground"
                     >
                       {isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Lookup"}
                     </Button>
@@ -283,21 +267,21 @@ export default function BarcodePage() {
                     style={{ aspectRatio: "16/9" }}
                   />
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-64 h-32 border-4 border-emerald-400 rounded-lg">
-                      <div className="absolute top-2 left-2 w-6 h-6 border-l-4 border-t-4 border-emerald-400"></div>
-                      <div className="absolute top-2 right-2 w-6 h-6 border-r-4 border-t-4 border-emerald-400"></div>
-                      <div className="absolute bottom-2 left-2 w-6 h-6 border-l-4 border-b-4 border-emerald-400"></div>
-                      <div className="absolute bottom-2 right-2 w-6 h-6 border-r-4 border-b-4 border-emerald-400"></div>
+                    <div className="w-64 h-32 border-4 border-primary/40 rounded-lg">
+                      <div className="absolute top-2 left-2 w-6 h-6 border-l-4 border-t-4 border-primary/40"></div>
+                      <div className="absolute top-2 right-2 w-6 h-6 border-r-4 border-t-4 border-primary/40"></div>
+                      <div className="absolute bottom-2 left-2 w-6 h-6 border-l-4 border-b-4 border-primary/40"></div>
+                      <div className="absolute bottom-2 right-2 w-6 h-6 border-r-4 border-b-4 border-primary/40"></div>
                     </div>
                   </div>
                 </div>
 
-                <p className="text-center text-emerald-700">Position the barcode within the frame</p>
+                <p className="text-center text-foreground">Position the barcode within the frame</p>
 
                 <div className="flex space-x-3">
                   <Button
                     onClick={simulateBarcodeDetection}
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
                     size="lg"
                   >
                     Simulate Scan
@@ -305,7 +289,7 @@ export default function BarcodePage() {
                   <Button
                     onClick={stopScanner}
                     variant="outline"
-                    className="border-emerald-300 text-emerald-700 bg-transparent"
+                    className="border-primary/30 text-primary hover:bg-primary/5 bg-transparent"
                     size="lg"
                   >
                     Cancel
@@ -316,45 +300,45 @@ export default function BarcodePage() {
 
             {scannedProduct && (
               <div className="space-y-4">
-                <Card className="border-emerald-200 bg-emerald-50">
+                <Card className="border-primary/20 bg-accent/50">
                   <CardHeader>
                     <div className="flex items-center space-x-2">
-                      <Package className="w-5 h-5 text-emerald-600" />
-                      <CardTitle className="text-emerald-800">{scannedProduct.name}</CardTitle>
+                      <Package className="w-5 h-5 text-primary" />
+                      <CardTitle className="text-foreground">{scannedProduct.name}</CardTitle>
                     </div>
-                    <CardDescription className="text-emerald-600">{scannedProduct.brand}</CardDescription>
+                    <CardDescription className="text-muted-foreground">{scannedProduct.brand}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                      <div className="text-center p-3 bg-white rounded-lg">
-                        <div className="font-semibold text-emerald-800">{scannedProduct.calories}</div>
-                        <div className="text-emerald-600">Calories</div>
+                      <div className="text-center p-3 bg-background rounded-lg">
+                        <div className="font-semibold text-foreground">{scannedProduct.calories}</div>
+                        <div className="text-muted-foreground">Calories</div>
                       </div>
-                      <div className="text-center p-3 bg-white rounded-lg">
-                        <div className="font-semibold text-emerald-800">{scannedProduct.protein}g</div>
-                        <div className="text-emerald-600">Protein</div>
+                      <div className="text-center p-3 bg-background rounded-lg">
+                        <div className="font-semibold text-foreground">{scannedProduct.protein}g</div>
+                        <div className="text-muted-foreground">Protein</div>
                       </div>
-                      <div className="text-center p-3 bg-white rounded-lg">
-                        <div className="font-semibold text-emerald-800">{scannedProduct.carbs}g</div>
-                        <div className="text-emerald-600">Carbs</div>
+                      <div className="text-center p-3 bg-background rounded-lg">
+                        <div className="font-semibold text-foreground">{scannedProduct.carbs}g</div>
+                        <div className="text-muted-foreground">Carbs</div>
                       </div>
-                      <div className="text-center p-3 bg-white rounded-lg">
-                        <div className="font-semibold text-emerald-800">{scannedProduct.fat}g</div>
-                        <div className="text-emerald-600">Fat</div>
+                      <div className="text-center p-3 bg-background rounded-lg">
+                        <div className="font-semibold text-foreground">{scannedProduct.fat}g</div>
+                        <div className="text-muted-foreground">Fat</div>
                       </div>
-                      <div className="text-center p-3 bg-white rounded-lg">
-                        <div className="font-semibold text-emerald-800">{scannedProduct.fiber}g</div>
-                        <div className="text-emerald-600">Fiber</div>
+                      <div className="text-center p-3 bg-background rounded-lg">
+                        <div className="font-semibold text-foreground">{scannedProduct.fiber}g</div>
+                        <div className="text-muted-foreground">Fiber</div>
                       </div>
-                      <div className="text-center p-3 bg-white rounded-lg">
-                        <div className="font-semibold text-emerald-800">{scannedProduct.sugar}g</div>
-                        <div className="text-emerald-600">Sugar</div>
+                      <div className="text-center p-3 bg-background rounded-lg">
+                        <div className="font-semibold text-foreground">{scannedProduct.sugar}g</div>
+                        <div className="text-muted-foreground">Sugar</div>
                       </div>
                     </div>
 
                     <div>
-                      <h4 className="font-semibold text-emerald-800 mb-2">Ingredients</h4>
-                      <p className="text-sm text-emerald-700">{scannedProduct.ingredients.join(", ")}</p>
+                      <h4 className="font-semibold text-foreground mb-2">Ingredients</h4>
+                      <p className="text-sm text-foreground">{scannedProduct.ingredients.join(", ")}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -363,7 +347,7 @@ export default function BarcodePage() {
                   <Button
                     onClick={analyzeProduct}
                     disabled={isAnalyzing}
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
                     size="lg"
                   >
                     {isAnalyzing ? (
@@ -386,7 +370,7 @@ export default function BarcodePage() {
                     }}
                     variant="outline"
                     disabled={isAnalyzing}
-                    className="border-emerald-300 text-emerald-700"
+                    className="border-primary/30 text-primary hover:bg-primary/5"
                     size="lg"
                   >
                     Scan Another
@@ -398,20 +382,20 @@ export default function BarcodePage() {
         </Card>
 
         {/* Demo Barcodes */}
-        <Card className="mt-6 border-emerald-200 bg-emerald-50">
+        <Card className="mt-6 border-primary/20 bg-accent/50">
           <CardHeader>
-            <CardTitle className="text-emerald-800">Try These Demo Barcodes</CardTitle>
-            <CardDescription className="text-emerald-600">
-              Use these sample barcodes to test the scanner
+            <CardTitle className="text-foreground">🎯 Try These Demo Barcodes</CardTitle>
+            <CardDescription className="text-muted-foreground">
+              Test the scanner with these sample products
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               {Object.entries(mockBarcodeDatabase).map(([barcode, product]) => (
-                <div key={barcode} className="flex items-center justify-between p-2 bg-white rounded">
+                <div key={barcode} className="flex items-center justify-between p-2 bg-background rounded">
                   <div>
-                    <span className="font-mono text-sm text-emerald-800">{barcode}</span>
-                    <span className="ml-3 text-emerald-600">{product.name}</span>
+                    <span className="font-mono text-sm text-foreground">{barcode}</span>
+                    <span className="ml-3 text-muted-foreground">{product.name}</span>
                   </div>
                   <Button
                     size="sm"
@@ -420,7 +404,7 @@ export default function BarcodePage() {
                       setManualBarcode(barcode)
                       processBarcode(barcode)
                     }}
-                    className="border-emerald-300 text-emerald-700"
+                    className="border-primary/30 text-primary hover:bg-primary/5"
                   >
                     Try
                   </Button>

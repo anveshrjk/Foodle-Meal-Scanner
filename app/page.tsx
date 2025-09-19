@@ -1,41 +1,22 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Camera, Search, Scan, Sparkles, Shield, Star, TrendingUp } from "lucide-react"
-import { ThemeToggle } from "@/components/theme-toggle"
 import Link from "next/link"
 import Image from "next/image"
+import { Header } from "@/components/header"
 
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 dark:from-primary/10 dark:via-primary/20 dark:to-primary/10">
-      {/* Header */}
-      <header className="container mx-auto px-6 py-8">
-        <nav className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Image src="/logo.png" alt="Foodle Logo" width={40} height={40} className="rounded-lg" />
-            <h1 className="text-2xl font-bold text-primary">Foodle</h1>
-          </div>
-          <div className="flex items-center space-x-4">
-            <ThemeToggle />
-            <Link href="/auth/login">
-              <Button variant="ghost" className="text-primary hover:text-primary/80">
-                Sign In
-              </Button>
-            </Link>
-            <Link href="/auth/signup">
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">Get Started</Button>
-            </Link>
-          </div>
-        </nav>
-      </header>
+      <Header />
 
       {/* Hero Section */}
       <section className="container mx-auto px-6 py-16 text-center">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-5xl font-bold text-foreground mb-6 text-balance">Stop Playing Food Roulette! 🎰</h2>
           <p className="text-xl text-muted-foreground mb-8 text-pretty max-w-2xl mx-auto">
-            Whether it's that tempting samosa or mysterious street chaat, Foodle's got your back! Scan any Indian
-            delicacy and discover if it's your health buddy or frenemy.
+            Whether it's that tempting samosa or mysterious street chaat, Foodle's got your back! Snap any delicacy and
+            discover if it's your health buddy or frenemy.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/auth/signup">
@@ -171,7 +152,12 @@ export default function HomePage() {
             <Card className="border-primary/20">
               <CardHeader className="text-center">
                 <div className="relative w-24 h-24 mx-auto mb-4">
-                  <Image src="/indian-samosa-golden-crispy.jpg" alt="Samosa" fill className="object-cover rounded-full" />
+                  <Image
+                    src="/indian-samosa-golden-crispy.jpg"
+                    alt="Samosa"
+                    fill
+                    className="object-cover rounded-full"
+                  />
                 </div>
                 <CardTitle className="text-foreground">Samosa Analysis</CardTitle>
               </CardHeader>
@@ -264,7 +250,7 @@ export default function HomePage() {
             <span className="text-lg font-semibold">Foodle</span>
           </div>
           <p className="text-primary-foreground/80 text-sm">
-            © 2024 Foodle. Making Indian food choices smarter, one scan at a time! 🍛
+            © Foodle. Making food choices smarter, one scan at a time! 🍛
           </p>
         </div>
       </footer>

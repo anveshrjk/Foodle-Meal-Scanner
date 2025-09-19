@@ -5,10 +5,10 @@ import { foodRecognitionService } from "@/lib/food-recognition"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft, Search, Loader2 } from "lucide-react"
-import Link from "next/link"
+import { Search, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, useCallback } from "react"
+import { Header } from "@/components/header"
 
 // Mock food database
 const mockFoodDatabase = [
@@ -117,40 +117,20 @@ export default function SearchPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950 dark:to-teal-950">
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-900 border-b border-emerald-200 dark:border-emerald-800 shadow-sm">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center space-x-4">
-            <Link href="/dashboard">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Dashboard
-              </Button>
-            </Link>
-            <div className="flex items-center space-x-2">
-              <Search className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-              <h1 className="text-2xl font-bold text-emerald-800 dark:text-emerald-200">Food Search</h1>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 dark:from-primary/10 dark:via-primary/20 dark:to-primary/10">
+      <Header showBack backHref="/dashboard" title="Food Search" subtitle="Discover nutrition secrets instantly! 🔍" />
 
       <div className="container mx-auto px-6 py-8 max-w-4xl">
-        <Card className="border-emerald-200 dark:border-emerald-800 bg-white dark:bg-gray-900">
+        <Card className="border-primary/20">
           <CardHeader className="text-center">
-            <CardTitle className="text-emerald-800 dark:text-emerald-200">Search Food Database</CardTitle>
-            <CardDescription className="text-emerald-600 dark:text-emerald-400">
-              Find nutritional information and get personalized recommendations
+            <CardTitle className="text-foreground">🌟 Smart Food Database</CardTitle>
+            <CardDescription className="text-muted-foreground">
+              Search our treasure trove of nutritional wisdom!
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {error && (
-              <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 p-4 rounded-md border border-red-200 dark:border-red-800">
+              <div className="text-sm text-destructive bg-destructive/10 p-4 rounded-md border border-destructive/20">
                 {error}
               </div>
             )}
@@ -162,12 +142,12 @@ export default function SearchPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyPress={handleKeyPress}
-                className="flex-1 border-emerald-200 dark:border-emerald-800 focus:border-emerald-400 dark:focus:border-emerald-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                className="flex-1 border-border focus:border-primary"
               />
               <Button
                 onClick={handleSearch}
                 disabled={isSearching || !searchQuery.trim()}
-                className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600 text-white px-6"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-6"
               >
                 {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
               </Button>
@@ -176,18 +156,18 @@ export default function SearchPage() {
             {/* Search Results */}
             {searchResults.length > 0 && (
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-emerald-800 dark:text-emerald-200">Search Results</h3>
+                <h3 className="text-lg font-semibold text-foreground">Search Results</h3>
                 <div className="grid gap-4">
                   {searchResults.map((food, index) => (
                     <Card
                       key={index}
-                      className="border-emerald-200 dark:border-emerald-800 hover:shadow-md transition-shadow bg-white dark:bg-gray-800"
+                      className="border-primary/20 hover:shadow-md transition-shadow bg-white dark:bg-gray-800"
                     >
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
-                            <h4 className="font-semibold text-emerald-800 dark:text-emerald-200 mb-2">{food.name}</h4>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-emerald-600 dark:text-emerald-400">
+                            <h4 className="font-semibold text-foreground mb-2">{food.name}</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-muted-foreground">
                               <div>
                                 <span className="font-medium">Calories:</span> {food.calories}
                               </div>
@@ -205,7 +185,7 @@ export default function SearchPage() {
                           <Button
                             onClick={() => analyzeFood(food)}
                             disabled={isAnalyzing}
-                            className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600 text-white ml-4"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground ml-4"
                           >
                             {isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Analyze"}
                           </Button>
@@ -219,8 +199,8 @@ export default function SearchPage() {
 
             {searchQuery && searchResults.length === 0 && !isSearching && (
               <div className="text-center py-8">
-                <p className="text-emerald-600 dark:text-emerald-400">No foods found matching "{searchQuery}"</p>
-                <p className="text-sm text-emerald-500 dark:text-emerald-500 mt-2">
+                <p className="text-foreground">No foods found matching "{searchQuery}"</p>
+                <p className="text-sm text-muted-foreground mt-2">
                   Try searching for Indian dishes like dal, biryani, or common foods like chicken, rice
                 </p>
               </div>
@@ -229,12 +209,10 @@ export default function SearchPage() {
         </Card>
 
         {/* Popular Foods */}
-        <Card className="mt-6 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950">
+        <Card className="mt-6 border-primary/20 bg-accent/50">
           <CardHeader>
-            <CardTitle className="text-emerald-800 dark:text-emerald-200">Popular Indian Foods</CardTitle>
-            <CardDescription className="text-emerald-600 dark:text-emerald-400">
-              Quick access to commonly searched foods
-            </CardDescription>
+            <CardTitle className="text-foreground">🔥 Trending Indian Foods</CardTitle>
+            <CardDescription className="text-muted-foreground">Quick access to popular searches</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
@@ -247,7 +225,7 @@ export default function SearchPage() {
                     setSearchQuery(food)
                     handleSearch()
                   }}
-                  className="border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900"
+                  className="border-primary/30 text-primary hover:bg-primary/5"
                 >
                   {food}
                 </Button>
