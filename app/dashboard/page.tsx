@@ -54,7 +54,7 @@ export default async function DashboardPage() {
         )}
 
         {/* Main Actions */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Link href="/scan/camera">
             <Card className="border-primary/20 hover:shadow-lg transition-all cursor-pointer hover:border-primary/40 hover:scale-105">
               <CardHeader className="text-center">

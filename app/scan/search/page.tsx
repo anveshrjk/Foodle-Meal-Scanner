@@ -164,10 +164,10 @@ export default function SearchPage() {
                       className="border-primary/20 hover:shadow-md transition-shadow bg-white dark:bg-gray-800"
                     >
                       <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                           <div className="flex-1">
                             <h4 className="font-semibold text-foreground mb-2">{food.name}</h4>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-muted-foreground">
+                            <div className="grid grid-cols-2 gap-3 text-sm text-muted-foreground">
                               <div>
                                 <span className="font-medium">Calories:</span> {food.calories}
                               </div>
@@ -185,7 +185,7 @@ export default function SearchPage() {
                           <Button
                             onClick={() => analyzeFood(food)}
                             disabled={isAnalyzing}
-                            className="bg-primary hover:bg-primary/90 text-primary-foreground ml-4"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground w-full sm:w-auto"
                           >
                             {isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Analyze"}
                           </Button>

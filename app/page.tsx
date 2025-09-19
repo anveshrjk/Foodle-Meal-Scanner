@@ -19,7 +19,7 @@ export default function HomePage() {
             discover if it's your health buddy or frenemy.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/auth/signup">
+            <Link href="/auth/login">
               <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground px-8">
                 Start Your Food Adventure 🚀
               </Button>
@@ -234,7 +234,7 @@ export default function HomePage() {
             Join thousands of Indians who've already cracked the code to healthier eating without giving up their
             favorite foods!
           </p>
-          <Link href="/auth/signup">
+          <Link href="/auth/login">
             <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground px-8">
               Start Your Food Journey - It's Free! 🎉
             </Button>

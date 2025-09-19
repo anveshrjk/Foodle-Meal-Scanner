@@ -277,117 +277,109 @@ export default function CameraScanPage() {
     )
   }
 
-  // Main scanner interface with live camera preview
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 dark:from-primary/10 dark:via-primary/20 dark:to-primary/10">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 bg-black/80 backdrop-blur-sm">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.back()}
-          className="text-white hover:bg-white/20 transition-all duration-200"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
-        <h1 className="text-lg font-semibold text-white">Food Scanner</h1>
-        <div className="w-10" /> {/* Spacer for centering */}
-      </div>
+      <Header showBack backHref="/dashboard" title="AI Food Scanner" subtitle="Snap, analyze, discover!" />
 
-      {/* Camera Preview Section */}
-      <div className="relative w-full bg-black">
-        {capturedImage ? (
-          // Captured image display
-          <div className="relative w-full h-64">
-            <img
-              src={capturedImage}
-              alt="Captured food"
-              className="w-full h-full object-cover"
-            />
-            
-            {/* Grid overlay on captured image */}
-            <div className="absolute inset-0 pointer-events-none">
-              <div className="w-full h-full relative">
-                <div className="absolute left-1/3 top-0 bottom-0 w-0.5 bg-white/40"></div>
-                <div className="absolute left-2/3 top-0 bottom-0 w-0.5 bg-white/40"></div>
-                <div className="absolute top-1/3 left-0 right-0 h-0.5 bg-white/40"></div>
-                <div className="absolute top-2/3 left-0 right-0 h-0.5 bg-white/40"></div>
+      <div className="container mx-auto px-4 py-6 max-w-2xl">
+        {/* Camera Preview Section */}
+        <div className="mb-6">
+          <div className="relative w-full bg-black rounded-xl overflow-hidden shadow-lg">
+            {capturedImage ? (
+              // Captured image display
+              <div className="relative w-full h-80">
+                <img
+                  src={capturedImage}
+                  alt="Captured food"
+                  className="w-full h-full object-cover"
+                />
+                
+                {/* Grid overlay on captured image */}
+                <div className="absolute inset-0 pointer-events-none">
+                  <div className="w-full h-full relative">
+                    <div className="absolute left-1/3 top-0 bottom-0 w-0.5 bg-white/40"></div>
+                    <div className="absolute left-2/3 top-0 bottom-0 w-0.5 bg-white/40"></div>
+                    <div className="absolute top-1/3 left-0 right-0 h-0.5 bg-white/40"></div>
+                    <div className="absolute top-2/3 left-0 right-0 h-0.5 bg-white/40"></div>
+                  </div>
+                </div>
+
+                {/* Retake button overlay */}
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+                  <Button
+                    onClick={retakePhoto}
+                    size="lg"
+                    className="w-14 h-14 rounded-full bg-white hover:bg-white/90 text-black shadow-lg transition-all duration-200"
+                  >
+                    <RotateCcw className="w-6 h-6" />
+                  </Button>
+                </div>
               </div>
-            </div>
-
-            {/* Retake button overlay */}
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-              <Button
-                onClick={retakePhoto}
-                size="lg"
-                className="w-12 h-12 rounded-full bg-white hover:bg-white/90 text-black shadow-lg transition-all duration-200"
-              >
-                <RotateCcw className="w-5 h-5" />
-              </Button>
-            </div>
-          </div>
-        ) : !isScanning ? (
-          // Camera placeholder when not scanning
-          <div className="w-full h-64 bg-gray-800 flex items-center justify-center border-2 border-dashed border-gray-600">
-            <div className="text-center space-y-4">
-              <Camera className="w-12 h-12 text-gray-400 mx-auto" />
-              <div>
-                <p className="text-gray-400 text-sm">Camera Preview</p>
-                <p className="text-gray-500 text-xs">Start scanning to see live feed</p>
+            ) : !isScanning ? (
+              // Camera placeholder when not scanning
+              <div className="w-full h-80 bg-gray-800 flex items-center justify-center border-2 border-dashed border-gray-600">
+                <div className="text-center space-y-4">
+                  <div className="w-16 h-16 mx-auto bg-primary/20 rounded-full flex items-center justify-center">
+                    <Camera className="w-8 h-8 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-lg font-medium">Camera Preview</p>
+                    <p className="text-gray-500 text-sm">Start scanning to see live feed</p>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        ) : (
-          // Live camera feed
-          <div className="relative w-full h-64">
-            <video 
-              ref={videoRef} 
-              autoPlay 
-              playsInline 
-              muted 
-              className="w-full h-full object-cover"
-            />
-            
-            {/* Grid overlay */}
-            <div className="absolute inset-0 pointer-events-none">
-              <div className="w-full h-full relative">
-                {/* Vertical lines */}
-                <div className="absolute left-1/3 top-0 bottom-0 w-0.5 bg-white/40"></div>
-                <div className="absolute left-2/3 top-0 bottom-0 w-0.5 bg-white/40"></div>
-                {/* Horizontal lines */}
-                <div className="absolute top-1/3 left-0 right-0 h-0.5 bg-white/40"></div>
-                <div className="absolute top-2/3 left-0 right-0 h-0.5 bg-white/40"></div>
+            ) : (
+              // Live camera feed
+              <div className="relative w-full h-80">
+                <video 
+                  ref={videoRef} 
+                  autoPlay 
+                  playsInline 
+                  muted 
+                  className="w-full h-full object-cover"
+                />
+                
+                {/* Grid overlay */}
+                <div className="absolute inset-0 pointer-events-none">
+                  <div className="w-full h-full relative">
+                    {/* Vertical lines */}
+                    <div className="absolute left-1/3 top-0 bottom-0 w-0.5 bg-white/50"></div>
+                    <div className="absolute left-2/3 top-0 bottom-0 w-0.5 bg-white/50"></div>
+                    {/* Horizontal lines */}
+                    <div className="absolute top-1/3 left-0 right-0 h-0.5 bg-white/50"></div>
+                    <div className="absolute top-2/3 left-0 right-0 h-0.5 bg-white/50"></div>
+                  </div>
+                </div>
+
+                {/* Camera controls overlay */}
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+                  <Button
+                    onClick={capturePhoto}
+                    size="lg"
+                    className="w-16 h-16 rounded-full bg-white hover:bg-white/90 text-black shadow-lg transition-all duration-200 border-4 border-primary/20"
+                  >
+                    <Camera className="w-7 h-7" />
+                  </Button>
+                </div>
+
+                {/* Instructions overlay */}
+                <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
+                  <div className="bg-black/70 text-white px-4 py-2 rounded-full text-sm font-medium">
+                    Position food in center
+                  </div>
+                </div>
               </div>
-            </div>
-
-            {/* Camera controls overlay */}
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-              <Button
-                onClick={capturePhoto}
-                size="lg"
-                className="w-12 h-12 rounded-full bg-white hover:bg-white/90 text-black shadow-lg transition-all duration-200"
-              >
-                <Camera className="w-5 h-5" />
-              </Button>
-            </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
 
-      {/* Food Details Form */}
-      <div className="bg-gray-900 p-4 space-y-6">
-        {error && (
-          <div className="text-sm text-red-400 bg-red-900/20 p-3 rounded-lg border border-red-800">
-            {error}
-          </div>
-        )}
-
-        {/* Start Camera Button */}
+        {/* Camera Controls */}
         {!isScanning && (
-          <div className="space-y-4">
+          <div className="space-y-4 mb-6">
             <Button
               onClick={startCamera}
-              className="w-full bg-green-600 hover:bg-green-700 text-white transition-all duration-200"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-200"
               size="lg"
             >
               <Camera className="w-5 h-5 mr-2" />
@@ -397,7 +389,7 @@ export default function CameraScanPage() {
             <Button
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
-              className="w-full border-gray-600 text-white hover:bg-gray-800 transition-all duration-200"
+              className="w-full border-border text-foreground hover:bg-accent transition-all duration-200"
               size="lg"
             >
               <Upload className="w-5 h-5 mr-2" />
@@ -415,119 +407,120 @@ export default function CameraScanPage() {
           </div>
         )}
 
-        {/* Food Type Selection */}
-        <div>
-          <h3 className="text-white font-semibold mb-3">Food Type</h3>
-          <div className="grid grid-cols-2 gap-2">
-            {FOOD_TYPES.map((type) => (
-              <Button
-                key={type.id}
-                variant={selectedFoodTypes.includes(type.id) ? "default" : "outline"}
-                onClick={() => toggleFoodType(type.id)}
-                className={`justify-start text-left transition-all duration-200 ${
-                  selectedFoodTypes.includes(type.id)
-                    ? "bg-white text-black hover:bg-white/90"
-                    : "bg-transparent border-gray-600 text-white hover:bg-white/10"
-                }`}
-              >
-                <span className="mr-2">{type.icon}</span>
-                {type.label}
-              </Button>
-            ))}
+        {error && (
+          <div className="text-sm text-destructive bg-destructive/10 p-4 rounded-lg border border-destructive/20 mb-6">
+            {error}
           </div>
-        </div>
+        )}
 
-        {/* Cooking Method Selection */}
-        <div>
-          <h3 className="text-white font-semibold mb-3">Cooking Method (multi-select)</h3>
-          <div className="grid grid-cols-2 gap-2">
-            {COOKING_METHODS.map((method) => (
-              <Button
-                key={method.id}
-                variant={selectedCookingMethods.includes(method.id) ? "default" : "outline"}
-                onClick={() => toggleCookingMethod(method.id)}
-                className={`justify-start text-left transition-all duration-200 ${
-                  selectedCookingMethods.includes(method.id)
-                    ? "bg-white text-black hover:bg-white/90"
-                    : "bg-transparent border-gray-600 text-white hover:bg-white/10"
-                }`}
-              >
-                <span className="mr-2">{method.icon}</span>
-                {method.label}
-              </Button>
-            ))}
-          </div>
-        </div>
-
-        {/* Oil Quantity Slider */}
-        <div>
-          <h3 className="text-white font-semibold mb-3">
-            Oil / Butter Quantity: {oilQuantity[0] === 50 ? "Default / Normal Oil" : `${oilQuantity[0]}%`}
-          </h3>
-          <Slider 
-            value={oilQuantity} 
-            onValueChange={setOilQuantity} 
-            max={100} 
-            step={10} 
-            className="w-full" 
-          />
-        </div>
-
-        {/* Meal Details Input */}
-        <div>
-          <Input
-            placeholder="Add meal details 'raw items'"
-            value={mealDetails}
-            onChange={(e) => setMealDetails(e.target.value)}
-            className="bg-gray-800 border-gray-600 text-white placeholder-gray-400 transition-all duration-200"
-          />
-        </div>
-
-        {/* Analysis Progress */}
-        {isAnalyzing && (
-          <div className="space-y-3 bg-gray-800 p-4 rounded-lg">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-white font-medium">AI analyzing food...</span>
-              <span className="text-white font-bold">{Math.round(analysisProgress)}%</span>
+        {/* Food Details Form */}
+        <div className="bg-card border border-border rounded-lg p-6 space-y-6">
+          {/* Food Type Selection */}
+          <div>
+            <h3 className="text-foreground font-semibold mb-3">Food Type</h3>
+            <div className="grid grid-cols-2 gap-2">
+              {FOOD_TYPES.map((type) => (
+                <Button
+                  key={type.id}
+                  variant={selectedFoodTypes.includes(type.id) ? "default" : "outline"}
+                  onClick={() => toggleFoodType(type.id)}
+                  className="justify-start text-left transition-all duration-200"
+                >
+                  <span className="mr-2">{type.icon}</span>
+                  {type.label}
+                </Button>
+              ))}
             </div>
-            <Progress value={analysisProgress} className="h-2" />
           </div>
-        )}
 
-        {/* Action Buttons */}
-        {capturedImage && (
-          <div className="flex space-x-3 pt-4">
-            <Button
-              onClick={retakePhoto}
-              variant="outline"
-              disabled={isAnalyzing}
-              className="flex-1 bg-gray-800 border-gray-600 text-white hover:bg-gray-700 transition-all duration-200"
-              size="lg"
-            >
-              <RotateCcw className="w-5 h-5 mr-2" />
-              Retake
-            </Button>
-
-            <Button
-              onClick={analyzeImage}
-              disabled={isAnalyzing}
-              className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white transition-all duration-200 font-semibold"
-              size="lg"
-            >
-              {isAnalyzing ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Analyzing...
-                </>
-              ) : (
-                <>
-                  <Camera className="w-5 h-5 mr-2" />
-                  Capture & Analyse Meal
-                </>
-              )}
-            </Button>
+          {/* Cooking Method Selection */}
+          <div>
+            <h3 className="text-foreground font-semibold mb-3">Cooking Method (multi-select)</h3>
+            <div className="grid grid-cols-2 gap-2">
+              {COOKING_METHODS.map((method) => (
+                <Button
+                  key={method.id}
+                  variant={selectedCookingMethods.includes(method.id) ? "default" : "outline"}
+                  onClick={() => toggleCookingMethod(method.id)}
+                  className="justify-start text-left transition-all duration-200"
+                >
+                  <span className="mr-2">{method.icon}</span>
+                  {method.label}
+                </Button>
+              ))}
+            </div>
           </div>
-        )}
+
+          {/* Oil Quantity Slider */}
+          <div>
+            <h3 className="text-foreground font-semibold mb-3">
+              Oil / Butter Quantity: {oilQuantity[0] === 50 ? "Default / Normal Oil" : `${oilQuantity[0]}%`}
+            </h3>
+            <Slider 
+              value={oilQuantity} 
+              onValueChange={setOilQuantity} 
+              max={100} 
+              step={10} 
+              className="w-full" 
+            />
+          </div>
+
+          {/* Meal Details Input */}
+          <div>
+            <Input
+              placeholder="Add meal details 'raw items'"
+              value={mealDetails}
+              onChange={(e) => setMealDetails(e.target.value)}
+              className="transition-all duration-200"
+            />
+          </div>
+
+          {/* Analysis Progress */}
+          {isAnalyzing && (
+            <div className="space-y-3 bg-accent p-4 rounded-lg">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-foreground font-medium">AI analyzing food...</span>
+                <span className="text-foreground font-bold">{Math.round(analysisProgress)}%</span>
+              </div>
+              <Progress value={analysisProgress} className="h-2" />
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          {capturedImage && (
+            <div className="flex space-x-3 pt-4">
+              <Button
+                onClick={retakePhoto}
+                variant="outline"
+                disabled={isAnalyzing}
+                className="flex-1 transition-all duration-200"
+                size="lg"
+              >
+                <RotateCcw className="w-5 h-5 mr-2" />
+                Retake
+              </Button>
+
+              <Button
+                onClick={analyzeImage}
+                disabled={isAnalyzing}
+                className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-200"
+                size="lg"
+              >
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Camera className="w-5 h-5 mr-2" />
+                    Capture & Analyse Meal
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
 
       <canvas ref={canvasRef} className="hidden" />

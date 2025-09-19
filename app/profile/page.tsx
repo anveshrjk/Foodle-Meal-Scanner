@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Save } from "lucide-react"
+import { Save, LogOut } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
@@ -141,6 +141,17 @@ export default function ProfilePage() {
     setProfile({ ...profile, [field]: newArray })
   }
 
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+      router.push("/")
+    } catch (error) {
+      console.error("Error logging out:", error)
+      setError("Failed to logout")
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 dark:from-primary/10 dark:via-primary/20 dark:to-primary/10 flex items-center justify-center">
@@ -172,7 +183,7 @@ export default function ProfilePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name" className="text-foreground">
                     Full Name
@@ -203,7 +214,7 @@ export default function ProfilePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="age" className="text-foreground">
                     Age
@@ -296,7 +307,7 @@ export default function ProfilePage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {dietaryOptions.map((option) => (
                   <div key={option} className="flex items-center space-x-2">
                     <Checkbox
@@ -324,7 +335,7 @@ export default function ProfilePage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {healthGoalOptions.map((goal) => (
                   <div key={goal} className="flex items-center space-x-2">
                     <Checkbox
@@ -350,7 +361,7 @@ export default function ProfilePage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {commonAllergies.map((allergy) => (
                   <div key={allergy} className="flex items-center space-x-2">
                     <Checkbox
@@ -392,7 +403,7 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          {/* Save Button */}
+          {/* Save Button and Logout */}
           <div className="flex items-center justify-between">
             <div>
               {error && (
@@ -406,14 +417,25 @@ export default function ProfilePage() {
                 </div>
               )}
             </div>
-            <Button
-              type="submit"
-              className="bg-primary hover:bg-primary/90 text-primary-foreground px-8"
-              disabled={isSaving}
-            >
-              <Save className="w-4 h-4 mr-2" />
-              {isSaving ? "Saving..." : "Save Profile ✨"}
-            </Button>
+            <div className="flex space-x-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleLogout}
+                className="border-destructive/20 text-destructive hover:bg-destructive/10"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
+              <Button
+                type="submit"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-8"
+                disabled={isSaving}
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {isSaving ? "Saving..." : "Save Profile ✨"}
+              </Button>
+            </div>
           </div>
         </form>
       </div>
