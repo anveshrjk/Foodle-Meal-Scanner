@@ -9,6 +9,7 @@ import { Search, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, useCallback } from "react"
 import { Header } from "@/components/header"
+import { createClient } from "@/lib/supabase/client"
 
 // Mock food database
 const mockFoodDatabase = [
@@ -37,12 +38,22 @@ export default function SearchPage() {
 
     setIsSearching(true)
     setError(null)
+    setSearchResults([])
 
     try {
+      console.log("Searching for:", searchQuery)
+      
       // Simulate API delay
       await new Promise((resolve) => setTimeout(resolve, 500))
 
       const results = foodRecognitionService.searchFood(searchQuery)
+      console.log("Search results:", results)
+      
+      if (results.length === 0) {
+        setError(`No foods found matching "${searchQuery}". Try searching for popular Indian dishes like "dal", "biryani", "paneer", etc.`)
+        return
+      }
+
       setSearchResults(
         results.map((food) => ({
           name: food.name,
@@ -66,17 +77,19 @@ export default function SearchPage() {
       setError(null)
 
       try {
+        const supabase = createClient()
+        
         // Get current user
         const {
           data: { user },
-        } = await window.supabase.auth.getUser()
+        } = await supabase.auth.getUser()
         if (!user) {
           router.push("/auth/login")
           return
         }
 
         // Get user profile for personalized recommendation
-        const { data: profile } = await window.supabase.from("profiles").select("*").eq("id", user.id).single()
+        const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
 
         const foodItem = {
           name: food.name,
@@ -87,7 +100,7 @@ export default function SearchPage() {
         const recommendation = foodRecognitionService.generateRecommendation(foodItem, profile)
 
         // Save scan to database
-        const { error: insertError } = await window.supabase.from("food_scans").insert({
+        const { error: insertError } = await supabase.from("food_scans").insert({
           user_id: user.id,
           food_name: food.name,
           scan_type: "search",
@@ -102,7 +115,7 @@ export default function SearchPage() {
         router.push(`/scan/results?food=${encodeURIComponent(food.name)}&recommended=${recommendation.is_recommended}`)
       } catch (err) {
         console.error("Error analyzing food:", err)
-        setError("Failed to analyze food. Please try again.")
+        setError(err instanceof Error ? err.message : "Failed to analyze food. Please try again.")
       } finally {
         setIsAnalyzing(false)
       }

@@ -76,6 +76,7 @@ export default function CameraScanPage() {
   const startCamera = useCallback(async () => {
     try {
       setError(null)
+      console.log("Starting camera...")
 
       // Check if getUserMedia is supported
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -94,11 +95,13 @@ export default function CameraScanPage() {
       }
 
       const mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
+      console.log("Camera stream obtained:", mediaStream)
 
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream
         setStream(mediaStream)
         setIsScanning(true)
+        console.log("Camera started successfully")
       }
     } catch (err) {
       console.error("Error accessing camera:", err)
@@ -138,36 +141,65 @@ export default function CameraScanPage() {
 
     if (!context) return
 
+    // Set canvas dimensions to match video dimensions
     canvas.width = video.videoWidth || 1280
     canvas.height = video.videoHeight || 720
 
+    // Draw the current video frame to canvas
     context.drawImage(video, 0, 0, canvas.width, canvas.height)
 
-    const imageDataUrl = canvas.toDataURL("image/jpeg", 0.95)
-    setCapturedImage(imageDataUrl)
-    stopCamera()
+    // Convert to base64 image with proper format
+    const imageDataUrl = canvas.toDataURL("image/jpeg", 0.8)
+    
+    // Validate the image data
+    if (imageDataUrl && imageDataUrl.startsWith("data:image/jpeg;base64,")) {
+      setCapturedImage(imageDataUrl)
+      stopCamera()
+    } else {
+      setError("Failed to capture image. Please try again.")
+    }
   }, [stopCamera])
 
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
+    // Validate file type
     if (!file.type.startsWith("image/")) {
-      setError("Please select a valid image file.")
+      setError("Please select a valid image file (JPEG, PNG, etc.)")
+      return
+    }
+
+    // Check file size (limit to 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setError("Image file is too large. Please select an image smaller than 10MB.")
       return
     }
 
     const reader = new FileReader()
     reader.onload = (e) => {
       const result = e.target?.result as string
-      setCapturedImage(result)
-      setError(null)
+      if (result && result.startsWith("data:image/")) {
+        setCapturedImage(result)
+        setError(null)
+      } else {
+        setError("Failed to read image file. Please try again.")
+      }
+    }
+    reader.onerror = () => {
+      setError("Failed to read image file. Please try again.")
     }
     reader.readAsDataURL(file)
+    
+    // Clear the input so the same file can be selected again
+    event.target.value = ""
   }, [])
 
   const analyzeImage = useCallback(async () => {
-    if (!capturedImage) return
+    if (!capturedImage) {
+      setError("No image captured. Please take a photo first.")
+      return
+    }
 
     setIsAnalyzing(true)
     setError(null)
@@ -181,9 +213,21 @@ export default function CameraScanPage() {
         return
       }
 
+      // Validate image format before sending
+      if (!capturedImage.startsWith("data:image/")) {
+        throw new Error("Invalid image format. Please capture or upload a valid image.")
+      }
+
+      console.log("Sending image for analysis...", { 
+        imageLength: capturedImage.length, 
+        imageType: capturedImage.substring(0, 50) + "..." 
+      })
+
       const analysisResponse = await fetch("/api/analyze-food", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           image: capturedImage,
           foodTypes: selectedFoodTypes,
@@ -194,7 +238,8 @@ export default function CameraScanPage() {
       })
 
       if (!analysisResponse.ok) {
-        throw new Error("Failed to analyze food image")
+        const errorData = await analysisResponse.json()
+        throw new Error(errorData.error || "Failed to analyze food image")
       }
 
       const { analysis } = await analysisResponse.json()
@@ -400,7 +445,6 @@ export default function CameraScanPage() {
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              capture="environment"
               onChange={handleFileUpload}
               className="hidden"
             />
