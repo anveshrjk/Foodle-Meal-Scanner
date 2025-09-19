@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Slider } from "@/components/ui/slider"
 import { Input } from "@/components/ui/input"
-import { Camera, Upload, Loader2, ArrowLeft, RotateCcw } from "lucide-react"
+import { Camera, Upload, Loader2, ArrowLeft, RotateCcw, X, Check } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, useRef, useCallback, useEffect } from "react"
 import { Header } from "@/components/header"
@@ -38,6 +38,8 @@ export default function CameraScanPage() {
   const [analysisProgress, setAnalysisProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [stream, setStream] = useState<MediaStream | null>(null)
+  const [showCamera, setShowCamera] = useState(false)
+  const [cameraError, setCameraError] = useState<string | null>(null)
 
   // Form state
   const [selectedFoodTypes, setSelectedFoodTypes] = useState<string[]>([])
@@ -76,26 +78,31 @@ export default function CameraScanPage() {
   const startCamera = useCallback(async () => {
     try {
       setError(null)
+      setCameraError(null)
       console.log("Starting camera...")
 
       // Check if getUserMedia is supported
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setError("Camera access is not supported in this browser. Please use a modern browser.")
+        setCameraError("Camera access is not supported in this browser. Please use a modern browser.")
         return
       }
 
       // Check if we're on HTTPS or localhost (required for camera access)
       if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-        setError("Camera access requires HTTPS. Please use the secure version of the site.")
+        setCameraError("Camera access requires HTTPS. Please use the secure version of the site.")
         return
+      }
+
+      // Stop any existing stream
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop())
       }
 
       const constraints = {
         video: {
           facingMode: "environment", // Use back camera by default
-          width: { ideal: 1920, max: 1920 },
-          height: { ideal: 1080, max: 1080 },
-          aspectRatio: { ideal: 4 / 3 },
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 },
         },
         audio: false,
       }
@@ -107,12 +114,17 @@ export default function CameraScanPage() {
         videoRef.current.srcObject = mediaStream
         setStream(mediaStream)
         setIsScanning(true)
+        setShowCamera(true)
         
-        // Add this line to start the video playback
-        videoRef.current.play().catch(err => {
-          console.error("Video play failed:", err)
-          setError("Failed to start the camera preview.")
-        })
+        // Wait for video to be ready
+        videoRef.current.onloadedmetadata = () => {
+          if (videoRef.current) {
+            videoRef.current.play().catch(err => {
+              console.error("Video play failed:", err)
+              setCameraError("Failed to start camera preview.")
+            })
+          }
+        }
         
         console.log("Camera started successfully")
       }
@@ -136,14 +148,17 @@ export default function CameraScanPage() {
               videoRef.current.srcObject = basicStream
               setStream(basicStream)
               setIsScanning(true)
-              setError(null)
+              setShowCamera(true)
+              setCameraError(null)
               
-              // Add the .play() call here as well
-              videoRef.current.play().catch(fallbackPlayErr => {
-                  console.error("Fallback video play failed:", fallbackPlayErr)
-                  setError("Failed to start the camera preview.")
-              })
-        
+              videoRef.current.onloadedmetadata = () => {
+                if (videoRef.current) {
+                  videoRef.current.play().catch(fallbackPlayErr => {
+                    console.error("Fallback video play failed:", fallbackPlayErr)
+                    setCameraError("Failed to start camera preview.")
+                  })
+                }
+              }
               return
             }
           } catch (fallbackErr) {
@@ -152,9 +167,9 @@ export default function CameraScanPage() {
         }
       }
       
-      setError(errorMessage)
+      setCameraError(errorMessage)
     }
-  }, [])
+  }, [stream])
 
   const stopCamera = useCallback(() => {
     if (stream) {
@@ -165,16 +180,23 @@ export default function CameraScanPage() {
       videoRef.current.srcObject = null
     }
     setIsScanning(false)
+    setShowCamera(false)
   }, [stream])
 
   const capturePhoto = useCallback(() => {
-    if (!videoRef.current || !canvasRef.current) return
+    if (!videoRef.current || !canvasRef.current) {
+      console.error("Video or canvas ref not available")
+      return
+    }
 
     const video = videoRef.current
     const canvas = canvasRef.current
     const context = canvas.getContext("2d")
 
-    if (!context) return
+    if (!context) {
+      console.error("Could not get canvas context")
+      return
+    }
 
     // Set canvas dimensions to match video dimensions
     canvas.width = video.videoWidth || 1280
@@ -183,17 +205,18 @@ export default function CameraScanPage() {
     // Draw the current video frame to canvas
     context.drawImage(video, 0, 0, canvas.width, canvas.height)
 
-    // Convert to base64 image with proper format
+    // Convert to base64 image
     const imageDataUrl = canvas.toDataURL("image/jpeg", 0.8)
     
-    // Validate the image data
     if (imageDataUrl && imageDataUrl.startsWith("data:image/jpeg;base64,")) {
       setCapturedImage(imageDataUrl)
       stopCamera()
+      console.log("Photo captured successfully")
     } else {
       setError("Failed to capture image. Please try again.")
     }
   }, [stopCamera])
+
 
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -253,78 +276,110 @@ export default function CameraScanPage() {
         throw new Error("Invalid image format. Please capture or upload a valid image.")
       }
 
-      console.log("Sending image for analysis...", { 
-        imageLength: capturedImage.length, 
-        imageType: capturedImage.substring(0, 50) + "..." 
+      console.log("Starting comprehensive food analysis...")
+
+      // Step 1: Clarifai AI Recognition
+      setAnalysisProgress(10)
+      const clarifaiResponse = await fetch("/api/clarifai-recognition", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: capturedImage }),
       })
 
-      const analysisResponse = await fetch("/api/analyze-food", {
+      let clarifaiData = null
+      if (clarifaiResponse.ok) {
+        clarifaiData = await clarifaiResponse.json()
+        console.log("Clarifai recognition:", clarifaiData)
+      }
+
+      // Step 2: Open Food Facts API
+      setAnalysisProgress(30)
+      const foodName = clarifaiData?.primaryFood?.name || "unknown food"
+      const openFoodFactsResponse = await fetch("/api/openfoodfacts", {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          image: capturedImage,
-          foodTypes: selectedFoodTypes,
-          cookingMethods: selectedCookingMethods,
-          oilQuantity: oilQuantity[0],
-          mealDetails,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ foodName }),
+      })
+
+      let openFoodFactsData = null
+      if (openFoodFactsResponse.ok) {
+        openFoodFactsData = await openFoodFactsResponse.json()
+        console.log("Open Food Facts data:", openFoodFactsData)
+      }
+
+      // Step 3: Edamam Nutrition API
+      setAnalysisProgress(50)
+      const edamamResponse = await fetch("/api/edamam-nutrition", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          foodName,
+          image: capturedImage 
         }),
       })
 
-      if (!analysisResponse.ok) {
-        const errorData = await analysisResponse.json()
-        console.error("Analysis API error:", errorData)
-        throw new Error(errorData.error || "Failed to analyze food image")
+      let edamamData = null
+      if (edamamResponse.ok) {
+        edamamData = await edamamResponse.json()
+        console.log("Edamam nutrition data:", edamamData)
       }
 
-      const { analysis } = await analysisResponse.json()
-      console.log("Food analysis result:", analysis)
-      setAnalysisProgress(50)
+      // Step 4: Get user profile
+      setAnalysisProgress(70)
+      const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
 
-      const nutritionResponse = await fetch("/api/get-nutrition", {
+      // Step 5: Verdict Engine
+      setAnalysisProgress(80)
+      const verdictResponse = await fetch("/api/verdict-engine", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          foodName: analysis.foodName,
-          description: analysis.description,
+          foodName,
+          clarifaiData,
+          openFoodFactsData,
+          edamamData,
+          userProfile: profile
         }),
       })
 
-      if (!nutritionResponse.ok) {
-        const errorData = await nutritionResponse.json()
-        console.error("Nutrition API error:", errorData)
-        throw new Error(errorData.error || "Failed to get nutrition data")
+      if (!verdictResponse.ok) {
+        throw new Error("Failed to generate verdict")
       }
 
-      const { nutrition } = await nutritionResponse.json()
-      console.log("Nutrition data:", nutrition)
-      setAnalysisProgress(80)
-
-      const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
-      const recommendation = generatePersonalizedRecommendation(analysis, nutrition, profile)
+      const verdictResult = await verdictResponse.json()
+      console.log("Verdict result:", verdictResult)
       setAnalysisProgress(100)
 
+      // Save to database
       const { error: insertError } = await supabase.from("food_scans").insert({
         user_id: user.id,
-        food_name: analysis.foodName,
+        food_name: verdictResult.food_name,
         scan_type: "camera",
         image_url: capturedImage,
-        nutritional_data: nutrition,
-        recommendation: recommendation,
-        is_recommended: recommendation.is_recommended,
-        confidence: Math.round(analysis.confidence * 100),
+        nutritional_data: verdictResult.nutritional_data,
+        recommendation: verdictResult.verdict,
+        is_recommended: verdictResult.verdict.is_recommended,
+        confidence: Math.round(verdictResult.confidence.clarifai * 100),
         food_types: selectedFoodTypes,
         cooking_methods: selectedCookingMethods,
         oil_quantity: oilQuantity[0],
         meal_details: mealDetails,
+        health_score: verdictResult.health_score,
+        humorous_response: verdictResult.humorous_response
       })
 
       if (insertError) throw insertError
 
-      router.push(
-        `/scan/results?food=${encodeURIComponent(analysis.foodName)}&recommended=${recommendation.is_recommended}&confidence=${Math.round(analysis.confidence * 100)}`,
-      )
+      // Navigate to results with comprehensive data
+      const resultParams = new URLSearchParams({
+        food: verdictResult.food_name,
+        recommended: verdictResult.verdict.is_recommended.toString(),
+        healthScore: verdictResult.health_score.toString(),
+        confidence: Math.round(verdictResult.confidence.clarifai * 100).toString()
+      })
+
+      router.push(`/scan/results?${resultParams.toString()}`)
+
     } catch (err) {
       console.error("Error analyzing image:", err)
       let errorMessage = "Failed to analyze image. Please try again."
@@ -397,31 +452,30 @@ export default function CameraScanPage() {
                   </div>
                 </div>
 
-                {/* Retake button overlay */}
-                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+                {/* Action buttons overlay */}
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-4">
                   <Button
                     onClick={retakePhoto}
                     size="lg"
-                    className="w-14 h-14 rounded-full bg-white hover:bg-white/90 text-black shadow-lg transition-all duration-200"
+                    className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-lg transition-all duration-200"
                   >
-                    <RotateCcw className="w-6 h-6" />
+                    <X className="w-6 h-6" />
+                  </Button>
+                  <Button
+                    onClick={analyzeImage}
+                    disabled={isAnalyzing}
+                    size="lg"
+                    className="w-14 h-14 rounded-full bg-green-500 hover:bg-green-600 text-white shadow-lg transition-all duration-200"
+                  >
+                    {isAnalyzing ? (
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                    ) : (
+                      <Check className="w-6 h-6" />
+                    )}
                   </Button>
                 </div>
               </div>
-            ) : !isScanning ? (
-              // Camera placeholder when not scanning
-              <div className="w-full h-80 bg-gray-800 flex items-center justify-center border-2 border-dashed border-gray-600">
-                <div className="text-center space-y-4">
-                  <div className="w-16 h-16 mx-auto bg-primary/20 rounded-full flex items-center justify-center">
-                    <Camera className="w-8 h-8 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-gray-400 text-lg font-medium">Camera Preview</p>
-                    <p className="text-gray-500 text-sm">Start scanning to see live feed</p>
-                  </div>
-                </div>
-              </div>
-            ) : (
+            ) : showCamera ? (
               // Live camera feed
               <div className="relative w-full h-80">
                 <video 
@@ -450,7 +504,14 @@ export default function CameraScanPage() {
                 </div>
 
                 {/* Camera controls overlay */}
-                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-4">
+                  <Button
+                    onClick={stopCamera}
+                    size="lg"
+                    className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-lg transition-all duration-200"
+                  >
+                    <X className="w-6 h-6" />
+                  </Button>
                   <Button
                     onClick={capturePhoto}
                     size="lg"
@@ -463,7 +524,20 @@ export default function CameraScanPage() {
                 {/* Instructions overlay */}
                 <div className="absolute top-4 left-1/2 transform -translate-x-1/2">
                   <div className="bg-black/70 text-white px-4 py-2 rounded-full text-sm font-medium">
-                    Position food in center
+                    Position food in center and tap camera to capture
+                  </div>
+                </div>
+              </div>
+            ) : (
+              // Camera placeholder when not scanning
+              <div className="w-full h-80 bg-gray-800 flex items-center justify-center border-2 border-dashed border-gray-600">
+                <div className="text-center space-y-4">
+                  <div className="w-16 h-16 mx-auto bg-primary/20 rounded-full flex items-center justify-center">
+                    <Camera className="w-8 h-8 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-lg font-medium">Camera Preview</p>
+                    <p className="text-gray-500 text-sm">Tap "Snap Your Meal" to start</p>
                   </div>
                 </div>
               </div>
@@ -472,7 +546,7 @@ export default function CameraScanPage() {
         </div>
 
         {/* Camera Controls */}
-        {!isScanning && (
+        {!showCamera && !capturedImage && (
           <div className="space-y-4 mb-6">
             <Button
               onClick={startCamera}
@@ -503,9 +577,10 @@ export default function CameraScanPage() {
           </div>
         )}
 
-        {error && (
+        {/* Error Messages */}
+        {(error || cameraError) && (
           <div className="text-sm text-destructive bg-destructive/10 p-4 rounded-lg border border-destructive/20 mb-6">
-            {error}
+            {error || cameraError}
           </div>
         )}
 
@@ -582,40 +657,6 @@ export default function CameraScanPage() {
             </div>
           )}
 
-          {/* Action Buttons */}
-          {capturedImage && (
-            <div className="flex space-x-3 pt-4">
-              <Button
-                onClick={retakePhoto}
-                variant="outline"
-                disabled={isAnalyzing}
-                className="flex-1 transition-all duration-200"
-                size="lg"
-              >
-                <RotateCcw className="w-5 h-5 mr-2" />
-                Retake
-              </Button>
-
-              <Button
-                onClick={analyzeImage}
-                disabled={isAnalyzing}
-                className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-200"
-                size="lg"
-              >
-                {isAnalyzing ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <Camera className="w-5 h-5 mr-2" />
-                    Capture and Analyse the Meal
-                  </>
-                )}
-              </Button>
-            </div>
-          )}
         </div>
       </div>
 

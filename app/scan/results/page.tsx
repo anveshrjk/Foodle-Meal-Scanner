@@ -14,6 +14,8 @@ export default function ResultsPage() {
   const searchParams = useSearchParams()
   const foodName = searchParams.get("food")
   const isRecommended = searchParams.get("recommended") === "true"
+  const healthScore = searchParams.get("healthScore")
+  const confidence = searchParams.get("confidence")
   const [scanData, setScanData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const supabase = createClient()
@@ -102,15 +104,15 @@ export default function ResultsPage() {
                 {isRecommended ? "✅ Perfect Choice!" : "⚠️ Consider Alternatives"}
               </Badge>
               
-              {recommendation.health_score && (
+              {(healthScore || recommendation.health_score) && (
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-muted-foreground">Health Score:</span>
                   <div className={`px-3 py-1 rounded-full text-sm font-bold ${
-                    recommendation.health_score >= 80 ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" :
-                    recommendation.health_score >= 60 ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" :
+                    (parseInt(healthScore || recommendation.health_score) >= 80) ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" :
+                    (parseInt(healthScore || recommendation.health_score) >= 60) ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" :
                     "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
                   }`}>
-                    {recommendation.health_score}/100
+                    {healthScore || recommendation.health_score}/100
                   </div>
                 </div>
               )}
@@ -173,6 +175,15 @@ export default function ResultsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Humorous Response */}
+              {scanData.humorous_response && (
+                <div className="p-4 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 border border-blue-200 dark:border-blue-800">
+                  <p className="text-sm text-blue-800 dark:text-blue-200 font-medium">
+                    {scanData.humorous_response}
+                  </p>
+                </div>
+              )}
+
               <div
                 className={`p-4 rounded-lg ${isRecommended ? "bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800" : "bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800"}`}
               >
