@@ -22,7 +22,12 @@ export default function ResultsPage() {
 
   useEffect(() => {
     const loadScanData = async () => {
+      console.log("🔍 Results page loading...")
+      console.log("Food name:", foodName)
+      console.log("All URL params:", Object.fromEntries(searchParams.entries()))
+      
       if (!foodName) {
+        console.log("❌ No food name provided")
         setIsLoading(false)
         return
       }
@@ -51,6 +56,7 @@ export default function ResultsPage() {
           humorous_response: searchParams.get("humorous") || "Great choice! Your food has been analyzed with AI precision! 🤖"
         }
 
+        console.log("✅ Setting scan data from URL:", urlData)
         setScanData(urlData)
         setIsLoading(false)
 
