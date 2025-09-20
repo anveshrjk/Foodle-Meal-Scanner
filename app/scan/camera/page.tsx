@@ -48,6 +48,23 @@ export default function CameraScanPage() {
   const [nutritionalData, setNutritionalData] = useState<any>(null)
   const [showResultsModal, setShowResultsModal] = useState(false)
   const [analysisResult, setAnalysisResult] = useState<any>(null)
+  
+  // Manual input state for when AI fails
+  const [showManualInputModal, setShowManualInputModal] = useState(false)
+  const [manualFoodName, setManualFoodName] = useState("")
+  const [isManualInputLoading, setIsManualInputLoading] = useState(false)
+
+  // Debug: Log modal state changes
+  useEffect(() => {
+    console.log("🔍 showManualInputModal state changed:", showManualInputModal)
+  }, [showManualInputModal])
+
+  // Debug: Test function to force show modal
+  const testManualInputModal = useCallback(() => {
+    console.log("🔍 Testing manual input modal - current state:", showManualInputModal)
+    setShowManualInputModal(true)
+    console.log("🔍 Set showManualInputModal to true")
+  }, [showManualInputModal])
 
   // Form state
   const [selectedFoodTypes, setSelectedFoodTypes] = useState<string[]>([])
@@ -276,58 +293,62 @@ export default function CameraScanPage() {
         body: JSON.stringify({ image: imageData }),
       })
 
-      if (!clarifaiResponse.ok) {
-        const errorText = await clarifaiResponse.text()
-        console.error("Clarifai API error:", errorText)
-        
-        // Check if it's an API configuration issue
-        if (clarifaiResponse.status === 500 && errorText.includes("not configured")) {
-          console.warn("Clarifai API not configured, using fallback recognition")
-          // Use a simple fallback based on image analysis
-          const fallbackItems = ["food item", "meal", "dish"]
-          setIdentifiedFoods(fallbackItems)
-          return fallbackItems
-        }
-        
-        throw new Error(`Clarifai API failed: ${clarifaiResponse.status} - ${errorText}`)
-      }
-
       const clarifaiData = await clarifaiResponse.json()
-      console.log("Food recognition result:", clarifaiData)
+      console.log("🔍 Clarifai API Response:", clarifaiData)
+      console.log("🔍 Clarifai success status:", clarifaiData.success)
+      console.log("🔍 Clarifai food items:", clarifaiData.foodItems)
+      console.log("🔍 Clarifai concepts:", clarifaiData.concepts)
 
       // Check if the response indicates no food items were detected
-      if (clarifaiData.error && clarifaiData.error.includes("No food items detected")) {
-        console.warn("No food items detected by Clarifai, using fallback")
-        const fallbackItems = ["food item", "meal"]
-        setIdentifiedFoods(fallbackItems)
-        return fallbackItems
+      if (!clarifaiResponse.ok || (clarifaiData.error && clarifaiData.error.includes("No food items detected"))) {
+        console.warn("🔍 No food items detected by Clarifai, showing manual input modal")
+        console.warn("🔍 Response status:", clarifaiResponse.status)
+        console.warn("🔍 Response ok:", clarifaiResponse.ok)
+        console.warn("🔍 Error message:", clarifaiData.error)
+        setShowManualInputModal(true)
+        return [] // Return empty array to trigger manual input
+      }
+
+      // Check if it's an API configuration issue
+      if (!clarifaiResponse.ok && clarifaiResponse.status === 500 && clarifaiData.error?.includes("not configured")) {
+        console.warn("Clarifai API not configured, showing manual input modal")
+        setShowManualInputModal(true)
+        return [] // Return empty array to trigger manual input
       }
 
       // Extract food items from Clarifai response
       const foodItems: string[] = []
       
+      console.log("🔍 Processing Clarifai food items...")
       if (clarifaiData.foodItems && clarifaiData.foodItems.length > 0) {
-        clarifaiData.foodItems.forEach((item: any) => {
+        console.log("🔍 Found food items in response:", clarifaiData.foodItems.length)
+        clarifaiData.foodItems.forEach((item: any, index: number) => {
+          console.log(`🔍 Item ${index + 1}:`, item.name, "confidence:", item.confidence)
           if (item.confidence > 0.2) { // Lower confidence threshold
             foodItems.push(item.name)
+            console.log("🔍 Added to food items:", item.name)
+          } else {
+            console.log("🔍 Skipped item (low confidence):", item.name, "confidence:", item.confidence)
           }
         })
+      } else {
+        console.log("🔍 No food items found in Clarifai response")
       }
 
       // If no items found, use the primary food name
       if (foodItems.length === 0 && clarifaiData.primaryFood?.name) {
+        console.log("🔍 Using primary food name:", clarifaiData.primaryFood.name)
         foodItems.push(clarifaiData.primaryFood.name)
       }
 
       // Final fallback if still no items
       if (foodItems.length === 0) {
-        console.warn("No food items identified, using generic fallback")
-        const fallbackItems = ["food item", "meal"]
-        setIdentifiedFoods(fallbackItems)
-        return fallbackItems
+        console.warn("🔍 No food items identified, showing manual input modal")
+        setShowManualInputModal(true)
+        return [] // Return empty array to trigger manual input
       }
 
-      console.log("Identified food items:", foodItems)
+      console.log("🔍 Final identified food items:", foodItems)
       setIdentifiedFoods(foodItems)
       return foodItems
 
@@ -338,10 +359,10 @@ export default function CameraScanPage() {
         stack: error instanceof Error ? error.stack : undefined
       })
       
-      // Fallback to a generic food item
-      const fallbackItems = ["food item", "meal"]
-      setIdentifiedFoods(fallbackItems)
-      return fallbackItems
+      // Show manual input modal instead of using fallback
+      console.warn("🔍 Food recognition failed, showing manual input modal")
+      setShowManualInputModal(true)
+      return [] // Return empty array to trigger manual input
     }
   }, [])
 
@@ -366,39 +387,57 @@ export default function CameraScanPage() {
       }
 
       // Try Edamam API first
-      const edamamResponse = await fetch("/api/edamam-nutrition", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          foodName: foodItems[0], // Use first identified food item
-          image: capturedImage 
-        }),
-      })
+      const foodName = foodItems[0]
+      console.log("🍎 Calling Edamam API with food name:", foodName)
+      
+      // Check if we have a valid food name (not generic fallback)
+      if (foodName && foodName !== "food item" && foodName !== "meal" && foodName.trim().length > 0) {
+        const edamamResponse = await fetch("/api/edamam-nutrition", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            foodName: foodName,
+            image: capturedImage 
+          }),
+        })
+        console.log("🍎 Edamam API response status:", edamamResponse.status)
 
-      if (edamamResponse.ok) {
-        const edamamData = await edamamResponse.json()
-        console.log("Edamam nutrition data:", edamamData)
-        
-        if (edamamData.nutrition) {
-          nutritionalData.calories = edamamData.nutrition.calories || 0
-          nutritionalData.protein = edamamData.nutrition.protein || 0
-          nutritionalData.fat = edamamData.nutrition.fat || 0
-          nutritionalData.carbs = edamamData.nutrition.carbs || 0
-          nutritionalData.fiber = edamamData.nutrition.fiber || 0
-          nutritionalData.sugar = edamamData.nutrition.sugar || 0
-          nutritionalData.sodium = edamamData.nutrition.sodium || 0
-          nutritionalData.dietLabels = edamamData.nutrition.diet_labels || []
-          nutritionalData.healthLabels = edamamData.nutrition.health_labels || []
-          nutritionalData.totalNutrients = edamamData.nutrition.totalNutrients || {}
+        if (edamamResponse.ok) {
+          const edamamData = await edamamResponse.json()
+          console.log("🍎 Edamam API Response:", edamamData)
+          console.log("🍎 Edamam success status:", edamamData.success)
+          console.log("🍎 Edamam nutrition object:", edamamData.nutrition)
+          console.log("🍎 Edamam food info:", edamamData.food_info)
+          console.log("🍎 Edamam raw data:", edamamData.raw_data)
+          
+          if (edamamData.nutrition) {
+            console.log("🍎 Processing Edamam nutrition data...")
+            nutritionalData.calories = edamamData.nutrition.calories || 0
+            nutritionalData.protein = edamamData.nutrition.protein || 0
+            nutritionalData.fat = edamamData.nutrition.fat || 0
+            nutritionalData.carbs = edamamData.nutrition.carbs || 0
+            nutritionalData.fiber = edamamData.nutrition.fiber || 0
+            nutritionalData.sugar = edamamData.nutrition.sugar || 0
+            nutritionalData.sodium = edamamData.nutrition.sodium || 0
+            nutritionalData.dietLabels = edamamData.nutrition.diet_labels || []
+            nutritionalData.healthLabels = edamamData.nutrition.health_labels || []
+            nutritionalData.totalNutrients = edamamData.nutrition.totalNutrients || {}
+            
+            console.log("🍎 Updated nutritional data with Edamam:", nutritionalData)
+          } else {
+            console.log("❌ No nutrition data found in Edamam response")
+          }
+        } else {
+          const errorText = await edamamResponse.text()
+          console.error("Edamam API failed:", edamamResponse.status, errorText)
+          
+          // Check if it's an API configuration issue
+          if (edamamResponse.status === 500 && errorText.includes("not configured")) {
+            console.warn("Edamam API not configured, will use fallback nutrition data")
+          }
         }
       } else {
-        const errorText = await edamamResponse.text()
-        console.error("Edamam API failed:", edamamResponse.status, errorText)
-        
-        // Check if it's an API configuration issue
-        if (edamamResponse.status === 500 && errorText.includes("not configured")) {
-          console.warn("Edamam API not configured, will use fallback nutrition data")
-        }
+        console.log("🍎 Skipping Edamam API - invalid food name:", foodName)
       }
 
       // Fallback to Open Food Facts if Edamam fails
@@ -494,6 +533,96 @@ export default function CameraScanPage() {
     }
   }, [capturedImage])
 
+  // Handle manual food name input
+  const handleManualFoodInput = useCallback(async () => {
+    if (!manualFoodName.trim()) {
+      setError("Please enter a food name")
+      return
+    }
+
+    setIsManualInputLoading(true)
+    setError(null)
+
+    try {
+      console.log("🔍 Processing manual food input:", manualFoodName)
+      
+      // Use the manual food name for analysis
+      const foodItems = [manualFoodName.trim()]
+      setIdentifiedFoods(foodItems)
+      
+      // Close the manual input modal
+      setShowManualInputModal(false)
+      
+      // Continue with nutritional analysis
+      const nutritionalData = await fetchNutritionalData(foodItems)
+      console.log("🍎 Nutritional data for manual input:", nutritionalData)
+
+      // Get user profile for personalized recommendations
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) {
+        router.push("/auth/login")
+        return
+      }
+
+      const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
+
+      // Generate verdict using our verdict engine
+      const verdictPayload = {
+        foodName: foodItems[0],
+        clarifaiData: { 
+          primaryFood: { name: foodItems[0] },
+          confidence: 0.5 // Lower confidence for manual input
+        },
+        openFoodFactsData: { 
+          nutrition: nutritionalData 
+        },
+        edamamData: { 
+          nutrition: nutritionalData 
+        },
+        userProfile: profile
+      }
+      
+      const verdictResponse = await fetch("/api/verdict-engine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(verdictPayload),
+      })
+
+      if (!verdictResponse.ok) {
+        throw new Error("Failed to generate verdict")
+      }
+
+      const verdictResult = await verdictResponse.json()
+      
+      // Create analysis result for manual input
+      const analysisResultData = {
+        foodName: foodItems[0],
+        isRecommended: verdictResult.verdict?.is_recommended || true,
+        healthScore: verdictResult.health_score || 70,
+        confidence: 50, // Lower confidence for manual input
+        nutritionalData: verdictResult.nutritional_data || nutritionalData,
+        recommendation: verdictResult.verdict || { reason: "Analysis completed with manual input" },
+        humorousResponse: verdictResult.humorous_response || "Thanks for providing the food name! 🍽️",
+        identifiedFoods: foodItems,
+        clarifaiData: { primaryFood: { name: foodItems[0] }, confidence: 0.5 },
+        edamamData: { nutrition: nutritionalData },
+        isManualInput: true // Flag to indicate this was manual input
+      }
+      
+      console.log("📊 Manual input analysis result:", analysisResultData)
+      setAnalysisResult(analysisResultData)
+      setShowResultsModal(true)
+      
+    } catch (error) {
+      console.error("Error processing manual food input:", error)
+      setError("Failed to analyze the food. Please try again.")
+    } finally {
+      setIsManualInputLoading(false)
+    }
+  }, [manualFoodName, supabase, router, fetchNutritionalData])
+
   // Main meal analysis handler
   const handleAnalyzeMeal = useCallback(async () => {
     if (!capturedImage) {
@@ -524,18 +653,30 @@ export default function CameraScanPage() {
       let foodItems: string[] = []
       try {
         foodItems = await recognizeFoodItems(capturedImage)
+        console.log("🔍 Food recognition completed. Identified foods:", foodItems)
       } catch (error) {
         console.error("Food recognition failed, using fallback:", error)
         foodItems = ["food item"] // Fallback food name
       }
       
+      // If no food items identified, show manual input modal and stop analysis
       if (foodItems.length === 0) {
-        foodItems = ["food item"] // Ensure we always have a food name
+        console.log("🔍 No food items identified, showing manual input modal")
+        console.log("🔍 Setting showManualInputModal to true")
+        setShowManualInputModal(true)
+        setIsAnalyzing(false)
+        setAnalysisStep("")
+        setAnalysisProgress(0)
+        return
       }
+
+      console.log("🔍 Proceeding with analysis for food items:", foodItems)
 
       // Step 2: Data-to-Nutrition (Edamam API)
       const nutritionalData = await fetchNutritionalData(foodItems)
-      console.log("Nutritional data fetched:", nutritionalData)
+      console.log("🍎 Final nutritional data after all APIs:", nutritionalData)
+      console.log("🍎 Nutritional data calories:", nutritionalData.calories)
+      console.log("🍎 Nutritional data protein:", nutritionalData.protein)
 
       // Step 3: Get user profile for personalized recommendations
       setAnalysisStep("👤 Loading your profile...")
@@ -578,7 +719,9 @@ export default function CameraScanPage() {
       }
 
       const verdictResult = await verdictResponse.json()
-      console.log("Verdict result:", verdictResult)
+      console.log("🧠 Verdict result:", verdictResult)
+      console.log("🧠 Verdict nutritional_data:", verdictResult.nutritional_data)
+      console.log("🧠 Verdict health_score:", verdictResult.health_score)
       
       // Validate verdict result structure and provide fallback
       if (!verdictResult.verdict || !verdictResult.nutritional_data) {
@@ -650,7 +793,7 @@ export default function CameraScanPage() {
       })
 
       // Show results in modal instead of redirecting
-      setAnalysisResult({
+      const analysisResultData = {
         foodName: foodItems[0],
         isRecommended: verdictResult.verdict.is_recommended,
         healthScore: verdictResult.health_score,
@@ -661,7 +804,13 @@ export default function CameraScanPage() {
         identifiedFoods: foodItems,
         clarifaiData: { primaryFood: { name: foodItems[0] }, confidence: 0.85 },
         edamamData: { nutrition: nutritionalData }
-      })
+      }
+      
+      console.log("📊 Analysis result data for modal:", analysisResultData)
+      console.log("📊 Modal nutritional data:", analysisResultData.nutritionalData)
+      console.log("📊 Modal Edamam data:", analysisResultData.edamamData)
+      
+      setAnalysisResult(analysisResultData)
       setShowResultsModal(true)
 
     } catch (err) {
@@ -839,6 +988,26 @@ export default function CameraScanPage() {
                       </>
                     )}
                   </Button>
+
+                  {/* Debug: Test manual input modal */}
+                  {process.env.NODE_ENV === 'development' && (
+                    <Button
+                      onClick={testManualInputModal}
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      disabled={isManualInputLoading}
+                    >
+                      {isManualInputLoading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2"></div>
+                          Loading...
+                        </>
+                      ) : (
+                        "✋ Try Manual Input"
+                      )}
+                    </Button>
+                  )}
                 </div>
 
                 {/* Real-time Analysis Progress - Show right below the analyze button */}
@@ -1102,6 +1271,11 @@ export default function CameraScanPage() {
                     <XCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
                   )}
                   <h3 className="text-xl font-semibold text-foreground">{analysisResult.foodName}</h3>
+                  {analysisResult.isManualInput && (
+                    <Badge variant="outline" className="text-xs bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                      ✋ Manual Input
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex items-center space-x-4">
                   <Badge variant={analysisResult.isRecommended ? "default" : "destructive"}>
@@ -1119,13 +1293,27 @@ export default function CameraScanPage() {
               {/* Identified Foods from Clarifai */}
               {analysisResult.identifiedFoods && analysisResult.identifiedFoods.length > 0 && (
                 <div className="mb-6">
-                  <h4 className="text-lg font-semibold text-foreground mb-3">🔍 Identified Foods</h4>
+                  <h4 className="text-lg font-semibold text-foreground mb-3">🔍 Identified Foods (Clarifai)</h4>
                   <div className="flex flex-wrap gap-2">
                     {analysisResult.identifiedFoods.map((food: string, index: number) => (
                       <Badge key={index} variant="outline" className="text-sm">
                         {food}
                       </Badge>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Clarifai Data Display */}
+              {analysisResult.clarifaiData && (
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold text-foreground mb-3">🔍 Clarifai Recognition Data</h4>
+                  <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <div className="text-sm space-y-2">
+                      <div><strong>Primary Food:</strong> {analysisResult.clarifaiData.primaryFood?.name || 'N/A'}</div>
+                      <div><strong>Confidence:</strong> {analysisResult.clarifaiData.confidence ? (analysisResult.clarifaiData.confidence * 100).toFixed(1) + '%' : 'N/A'}</div>
+                      <div><strong>Raw Clarifai Data:</strong> {JSON.stringify(analysisResult.clarifaiData, null, 2)}</div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1152,6 +1340,30 @@ export default function CameraScanPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Edamam Data Display */}
+              {analysisResult.edamamData && analysisResult.edamamData.nutrition && (
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold text-foreground mb-3">🍎 Edamam Nutrition Data</h4>
+                  <div className="p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div><strong>Calories:</strong> {analysisResult.edamamData.nutrition.calories || 'N/A'}</div>
+                      <div><strong>Protein:</strong> {analysisResult.edamamData.nutrition.protein || 'N/A'}g</div>
+                      <div><strong>Carbs:</strong> {analysisResult.edamamData.nutrition.carbs || 'N/A'}g</div>
+                      <div><strong>Fat:</strong> {analysisResult.edamamData.nutrition.fat || 'N/A'}g</div>
+                      <div><strong>Fiber:</strong> {analysisResult.edamamData.nutrition.fiber || 'N/A'}g</div>
+                      <div><strong>Sugar:</strong> {analysisResult.edamamData.nutrition.sugar || 'N/A'}g</div>
+                      <div><strong>Sodium:</strong> {analysisResult.edamamData.nutrition.sodium || 'N/A'}mg</div>
+                      <div><strong>Health Labels:</strong> {analysisResult.edamamData.nutrition.health_labels?.join(', ') || 'N/A'}</div>
+                    </div>
+                    {analysisResult.edamamData.nutrition.diet_labels && analysisResult.edamamData.nutrition.diet_labels.length > 0 && (
+                      <div className="mt-3">
+                        <strong>Diet Labels:</strong> {analysisResult.edamamData.nutrition.diet_labels.join(', ')}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* AI Recommendation */}
               <div className="mb-6">
@@ -1206,6 +1418,28 @@ export default function CameraScanPage() {
                 </div>
               )}
 
+              {/* Debug Information - API Data */}
+              {process.env.NODE_ENV === 'development' && (
+                <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                  <h5 className="font-semibold text-yellow-800 dark:text-yellow-200 mb-3">🔍 API Debug Data</h5>
+                  <div className="text-xs space-y-2 text-yellow-700 dark:text-yellow-300">
+                    <div><strong>Clarifai Data Available:</strong> {analysisResult.clarifaiData ? 'Yes' : 'No'}</div>
+                    {analysisResult.clarifaiData && (
+                      <div><strong>Clarifai Response:</strong> {JSON.stringify(analysisResult.clarifaiData, null, 2)}</div>
+                    )}
+                    <div><strong>Edamam Data Available:</strong> {analysisResult.edamamData ? 'Yes' : 'No'}</div>
+                    {analysisResult.edamamData && (
+                      <>
+                        <div><strong>Edamam Nutrition:</strong> {JSON.stringify(analysisResult.edamamData.nutrition, null, 2)}</div>
+                        <div><strong>Raw Edamam Response:</strong> {JSON.stringify(analysisResult.edamamData, null, 2)}</div>
+                      </>
+                    )}
+                    <div><strong>Final Nutritional Data:</strong> {JSON.stringify(analysisResult.nutritionalData, null, 2)}</div>
+                    <div><strong>Identified Foods:</strong> {JSON.stringify(analysisResult.identifiedFoods, null, 2)}</div>
+                  </div>
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="flex space-x-4">
                 <Button
@@ -1224,6 +1458,97 @@ export default function CameraScanPage() {
                 >
                   Scan Another
                 </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Food Input Modal */}
+      {console.log("🔍 Rendering modal check - showManualInputModal:", showManualInputModal)}
+      {showManualInputModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-card border border-border rounded-lg max-w-md w-full">
+            <div className="p-6">
+              {/* Header */}
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 mx-auto mb-4 bg-orange-100 dark:bg-orange-900 rounded-full flex items-center justify-center">
+                  <span className="text-2xl">🤖</span>
+                </div>
+                <h2 className="text-2xl font-bold text-foreground mb-2">Oops! AI Needs Help</h2>
+                <p className="text-muted-foreground">
+                  Our AI couldn't identify the food in your image. No worries! You can help us out by entering the food name manually.
+                </p>
+              </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="mb-4 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
+                  <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+                </div>
+              )}
+
+              {/* Food Name Input */}
+              <div className="mb-6">
+                <label htmlFor="manualFoodName" className="block text-sm font-medium text-foreground mb-2">
+                  What food did you capture? 🍽️
+                </label>
+                <input
+                  id="manualFoodName"
+                  type="text"
+                  value={manualFoodName}
+                  onChange={(e) => setManualFoodName(e.target.value)}
+                  placeholder="e.g., Pizza, Biryani, Salad, Pasta..."
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 bg-background text-foreground"
+                  disabled={isManualInputLoading}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && !isManualInputLoading) {
+                      handleManualFoodInput()
+                    }
+                  }}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Be as specific as possible for better nutritional analysis
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex space-x-3">
+                <Button
+                  onClick={() => {
+                    setShowManualInputModal(false)
+                    setManualFoodName("")
+                    setError(null)
+                    retakePhoto()
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                  disabled={isManualInputLoading}
+                >
+                  📸 Try Again
+                </Button>
+                <Button
+                  onClick={handleManualFoodInput}
+                  className="flex-1"
+                  disabled={isManualInputLoading || !manualFoodName.trim()}
+                >
+                  {isManualInputLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Analyzing...
+                    </>
+                  ) : (
+                    "🍎 Analyze Food"
+                  )}
+                </Button>
+              </div>
+
+              {/* Help Text */}
+              <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <p className="text-xs text-blue-800 dark:text-blue-200">
+                  <strong>💡 Tip:</strong> Try taking a clearer photo with better lighting, or enter the food name manually. 
+                  Our AI works best with well-lit, clear images of food items.
+                </p>
               </div>
             </div>
           </div>

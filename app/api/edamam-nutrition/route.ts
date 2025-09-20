@@ -10,8 +10,11 @@ export async function POST(req: Request) {
     const EDAMAM_APP_KEY = process.env.EDAMAM_APP_KEY?.trim()
 
     if (!EDAMAM_APP_ID || !EDAMAM_APP_KEY) {
-      console.error("Missing Edamam credentials", { EDAMAM_APP_ID: !!EDAMAM_APP_ID, EDAMAM_APP_KEY: !!EDAMAM_APP_KEY })
-      return Response.json({ error: "Edamam API credentials not configured" }, { status: 500 })
+      console.error("❌ Missing Edamam credentials", { EDAMAM_APP_ID: !!EDAMAM_APP_ID, EDAMAM_APP_KEY: !!EDAMAM_APP_KEY })
+      return Response.json({ 
+        error: "Edamam API credentials not configured. Please add EDAMAM_APP_ID and EDAMAM_APP_KEY to your .env.local file.",
+        details: `Missing: ${!EDAMAM_APP_ID ? 'EDAMAM_APP_ID' : ''} ${!EDAMAM_APP_KEY ? 'EDAMAM_APP_KEY' : ''}`.trim()
+      }, { status: 500 })
     }
 
     // Search for food in Edamam database
@@ -68,6 +71,10 @@ export async function POST(req: Request) {
       }
 
       const nutritionData = await nutritionResponse.json()
+      console.log("🍎 Edamam nutrition API response:", nutritionData)
+      console.log("🍎 Edamam totalNutrients:", nutritionData.totalNutrients)
+      console.log("🍎 Edamam healthLabels:", nutritionData.healthLabels)
+      console.log("🍎 Edamam dietLabels:", nutritionData.dietLabels)
       
       // Extract nutritional information
       const nutrition = {
@@ -86,6 +93,8 @@ export async function POST(req: Request) {
         diet_labels: nutritionData.dietLabels || [],
         cautions: nutritionData.cautions || []
       }
+
+      console.log("🍎 Final processed nutrition object:", nutrition)
 
       return Response.json({
         success: true,

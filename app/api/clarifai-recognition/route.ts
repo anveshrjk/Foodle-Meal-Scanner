@@ -16,7 +16,11 @@ export async function POST(req: Request) {
     const CLARIFAI_WORKFLOW_ID = process.env.CLARIFAI_WORKFLOW_ID?.trim() || "General"
     
     if (!CLARIFAI_API_KEY) {
-      return Response.json({ error: "Clarifai API key not configured" }, { status: 500 })
+      console.error("❌ CLARIFAI_API_KEY is missing from environment variables")
+      return Response.json({ 
+        error: "Clarifai API key not configured. Please add CLARIFAI_API_KEY to your .env.local file.",
+        details: "Missing CLARIFAI_API_KEY environment variable"
+      }, { status: 500 })
     }
 
     try {
@@ -67,6 +71,7 @@ export async function POST(req: Request) {
       }
 
       const data = await response.json()
+      console.log("🔍 Clarifai API raw response:", data)
       
       // Extract food predictions from workflow response
       // The workflow response structure may vary based on the workflow configuration
@@ -94,13 +99,18 @@ export async function POST(req: Request) {
         throw new Error("Failed to parse Clarifai workflow response")
       }
       
+      console.log("🔍 Extracted concepts:", concepts)
+      
       // Filter for food-related concepts and sort by confidence
       const foodConcepts = concepts
         .filter((concept: any) => concept.value > 0.1) // Filter low confidence predictions
         .sort((a: any, b: any) => b.value - a.value)
         .slice(0, 5) // Get top 5 predictions
 
+      console.log("🔍 Filtered food concepts:", foodConcepts)
+
       if (foodConcepts.length === 0) {
+        console.log("🔍 No food concepts found, returning error")
         return Response.json({ 
           error: "No food items detected in the image",
           concepts: [],
@@ -114,6 +124,8 @@ export async function POST(req: Request) {
         confidence: concept.value,
         description: `Detected food item: ${concept.name}`
       }))
+
+      console.log("🔍 Final processed food items:", foodItems)
 
       return Response.json({
         success: true,
