@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     }
 
     try {
-      const response = await fetch('https://api.clarifai.com/v2/models/food-item-recognition/outputs', {
+      const response = await fetch('https://api.clarifai.com/v2/models/food/outputs', {
         method: 'POST',
         headers: {
           'Authorization': `Key ${CLARIFAI_API_KEY}`,
