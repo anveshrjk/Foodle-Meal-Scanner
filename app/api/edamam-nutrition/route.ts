@@ -95,6 +95,13 @@ export async function POST(req: Request) {
           category: bestMatch.food.category,
           foodId: bestMatch.food.foodId,
           image: bestMatch.food.image
+        },
+        // Add raw Edamam data for debugging
+        raw_data: {
+          search_results: searchData.hints?.length || 0,
+          nutrition_available: !!nutritionData.totalNutrients,
+          health_labels: nutritionData.healthLabels || [],
+          diet_labels: nutritionData.dietLabels || []
         }
       })
 
