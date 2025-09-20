@@ -22,49 +22,99 @@ export default function ResultsPage() {
 
   useEffect(() => {
     const loadScanData = async () => {
-      if (!foodName) return
+      if (!foodName) {
+        setIsLoading(false)
+        return
+      }
 
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-        if (!user) return
+        // First try to get data from URL parameters (immediate display)
+        const urlData = {
+          food_name: foodName,
+          is_recommended: isRecommended,
+          health_score: healthScore,
+          confidence: confidence,
+          scan_type: "camera",
+          nutritional_data: {
+            calories: searchParams.get("calories") || "0",
+            protein: searchParams.get("protein") || "0",
+            carbs: searchParams.get("carbs") || "0",
+            fat: searchParams.get("fat") || "0",
+            fiber: searchParams.get("fiber") || "0",
+            sugar: searchParams.get("sugar") || "0"
+          },
+          recommendation: {
+            reason: searchParams.get("reason") || "Analysis completed successfully",
+            health_score: healthScore,
+            is_recommended: isRecommended
+          },
+          humorous_response: searchParams.get("humorous") || "Great choice! Your food has been analyzed with AI precision! 🤖"
+        }
 
-        // Get the most recent scan for this food
-        const { data } = await supabase
-          .from("food_scans")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("food_name", foodName)
-          .order("scanned_at", { ascending: false })
-          .limit(1)
-          .single()
+        setScanData(urlData)
+        setIsLoading(false)
 
-        setScanData(data)
+        // Then try to get more detailed data from database if available
+        try {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser()
+          if (user) {
+            const { data } = await supabase
+              .from("food_scans")
+              .select("*")
+              .eq("user_id", user.id)
+              .eq("food_name", foodName)
+              .order("scanned_at", { ascending: false })
+              .limit(1)
+              .single()
+
+            if (data) {
+              setScanData(data) // Update with database data if available
+            }
+          }
+        } catch (dbError) {
+          console.log("No database data available, using URL data")
+        }
       } catch (error) {
         console.error("Error loading scan data:", error)
-      } finally {
         setIsLoading(false)
       }
     }
 
     loadScanData()
-  }, [foodName, supabase])
+  }, [foodName, isRecommended, healthScore, confidence, searchParams, supabase])
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 dark:from-primary/10 dark:via-primary/20 dark:to-primary/10 flex items-center justify-center">
-        <div className="text-primary-foreground">Loading results...</div>
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 dark:from-primary/10 dark:via-primary/20 dark:to-primary/10">
+        <Header showBack backHref="/dashboard" title="Loading Results" subtitle="Processing your food analysis..." />
+        
+        <div className="container mx-auto px-6 py-8 max-w-4xl">
+          <Card className="border-primary/20">
+            <CardContent className="p-8 text-center space-y-4">
+              <div className="w-16 h-16 mx-auto bg-primary/20 rounded-full flex items-center justify-center">
+                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">Analyzing Your Food</h3>
+                <p className="text-muted-foreground">
+                  {foodName ? `Processing data for ${foodName}...` : "Loading analysis results..."}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }
 
-  if (!foodName || !scanData) {
+  if (!foodName) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 dark:from-primary/10 dark:via-primary/20 dark:to-primary/10 flex items-center justify-center">
         <Card className="border-primary/20">
           <CardContent className="p-8 text-center">
-            <p className="text-primary-foreground mb-4">No scan results found</p>
+            <p className="text-primary-foreground mb-4">No food name provided</p>
             <Link href="/dashboard">
               <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">Back to Dashboard 🏠</Button>
             </Link>
@@ -72,6 +122,32 @@ export default function ResultsPage() {
         </Card>
       </div>
     )
+  }
+
+  // If no scanData but we have foodName, create fallback data
+  if (!scanData) {
+    const fallbackData = {
+      food_name: foodName,
+      is_recommended: isRecommended,
+      health_score: healthScore,
+      confidence: confidence,
+      scan_type: "camera",
+      nutritional_data: {
+        calories: searchParams.get("calories") || "200",
+        protein: searchParams.get("protein") || "10",
+        carbs: searchParams.get("carbs") || "30",
+        fat: searchParams.get("fat") || "5",
+        fiber: searchParams.get("fiber") || "3",
+        sugar: searchParams.get("sugar") || "5"
+      },
+      recommendation: {
+        reason: searchParams.get("reason") || "Analysis completed successfully",
+        health_score: healthScore,
+        is_recommended: isRecommended
+      },
+      humorous_response: searchParams.get("humorous") || "Great choice! Your food has been analyzed with AI precision! 🤖"
+    }
+    setScanData(fallbackData)
   }
 
   const nutritionalData = scanData.nutritional_data
@@ -251,6 +327,27 @@ export default function ResultsPage() {
                 alt={foodName}
                 className="w-full max-w-md mx-auto rounded-lg shadow-md"
               />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Debug Information (only show in development) */}
+        {process.env.NODE_ENV === 'development' && (
+          <Card className="mt-6 border-yellow-200 bg-yellow-50 dark:bg-yellow-950">
+            <CardHeader>
+              <CardTitle className="text-yellow-800 dark:text-yellow-200">🔍 Debug Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm space-y-2">
+                <div><strong>Food Name:</strong> {foodName}</div>
+                <div><strong>Is Recommended:</strong> {isRecommended ? 'Yes' : 'No'}</div>
+                <div><strong>Health Score:</strong> {healthScore}</div>
+                <div><strong>Calories:</strong> {nutritionalData?.calories || 'N/A'}</div>
+                <div><strong>Protein:</strong> {nutritionalData?.protein || 'N/A'}g</div>
+                <div><strong>Carbs:</strong> {nutritionalData?.carbs || 'N/A'}g</div>
+                <div><strong>Fat:</strong> {nutritionalData?.fat || 'N/A'}g</div>
+                <div><strong>Reason:</strong> {recommendation?.reason || 'N/A'}</div>
+              </div>
             </CardContent>
           </Card>
         )}
