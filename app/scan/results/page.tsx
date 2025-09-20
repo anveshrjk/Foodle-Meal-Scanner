@@ -337,7 +337,7 @@ export default function ResultsPage() {
           </Card>
         )}
 
-        {/* Debug Information (only show in development) */}
+        {/* Debug Information (toggleable) */}
         {process.env.NODE_ENV === 'development' && (
           <Card className="mt-6 border-yellow-200 bg-yellow-50 dark:bg-yellow-950">
             <CardHeader>

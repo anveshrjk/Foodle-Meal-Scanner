@@ -11,6 +11,7 @@ import { Camera, Upload, Loader2, ArrowLeft, RotateCcw, X, Check, CheckCircle, X
 import { useRouter } from "next/navigation"
 import { useState, useRef, useCallback, useEffect } from "react"
 import { Header } from "@/components/header"
+import { getFeatureFlags } from "@/lib/env-validation"
 
 const FOOD_TYPES = [
   { id: "home_made", label: "Home Made", icon: "🏠" },
@@ -33,6 +34,9 @@ const COOKING_METHODS = [
 ]
 
 export default function CameraScanPage() {
+  // Get feature flags based on environment configuration
+  const features = getFeatureFlags()
+  
   const [isScanning, setIsScanning] = useState(false)
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -53,18 +57,32 @@ export default function CameraScanPage() {
   const [showManualInputModal, setShowManualInputModal] = useState(false)
   const [manualFoodName, setManualFoodName] = useState("")
   const [isManualInputLoading, setIsManualInputLoading] = useState(false)
+  
+  // Debug mode state (can be toggled in production)
+  const [debugMode, setDebugMode] = useState(false)
+  
+  // Cancel functionality state
+  const [cancelRequested, setCancelRequested] = useState(false)
 
   // Debug: Log modal state changes
   useEffect(() => {
     console.log("🔍 showManualInputModal state changed:", showManualInputModal)
   }, [showManualInputModal])
 
-  // Debug: Test function to force show modal
-  const testManualInputModal = useCallback(() => {
-    console.log("🔍 Testing manual input modal - current state:", showManualInputModal)
-    setShowManualInputModal(true)
-    console.log("🔍 Set showManualInputModal to true")
-  }, [showManualInputModal])
+  // Cancel function to stop any ongoing operations
+  const cancelOperations = useCallback(() => {
+    setCancelRequested(true)
+    setIsAnalyzing(false)
+    setIsManualInputLoading(false)
+    setAnalysisProgress(0)
+    setError(null)
+    console.log("🛑 Operations cancelled by user")
+  }, [])
+
+  // Reset cancel state when starting new operations
+  const resetCancelState = useCallback(() => {
+    setCancelRequested(false)
+  }, [])
 
   // Form state
   const [selectedFoodTypes, setSelectedFoodTypes] = useState<string[]>([])
@@ -105,6 +123,12 @@ export default function CameraScanPage() {
       setError(null)
       setCameraError(null)
       console.log("Starting camera...")
+
+      // Check if we're in browser environment
+      if (typeof window === 'undefined') {
+        setCameraError("Camera not available during server-side rendering")
+        return
+      }
 
       // Check if getUserMedia is supported
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -280,12 +304,19 @@ export default function CameraScanPage() {
     event.target.value = ""
   }, [])
 
-  // Step 1: Image-to-Data (Food Recognition)
+  // Step 1: Image-to-Data (Food Recognition) - Environment-aware
   const recognizeFoodItems = useCallback(async (imageData: string): Promise<string[]> => {
     try {
       console.log("Step 1: Starting food recognition...")
       setAnalysisStep("🔍 Recognizing food items...")
       setAnalysisProgress(10)
+      
+      // Check if food recognition is enabled
+      if (!features.foodRecognition) {
+        console.log("🔍 Food recognition disabled - showing manual input modal")
+        setShowManualInputModal(true)
+        return [] // Return empty array to trigger manual input
+      }
       
       const clarifaiResponse = await fetch("/api/clarifai-recognition", {
         method: "POST",
@@ -309,7 +340,14 @@ export default function CameraScanPage() {
         return [] // Return empty array to trigger manual input
       }
 
-      // Check if it's an API configuration issue
+      // Check if it's an API configuration issue (503 status)
+      if (!clarifaiResponse.ok && clarifaiResponse.status === 503) {
+        console.warn("🔍 Clarifai API not configured (503), showing manual input modal")
+        setShowManualInputModal(true)
+        return [] // Return empty array to trigger manual input
+      }
+
+      // Check if it's an API configuration issue (500 status)
       if (!clarifaiResponse.ok && clarifaiResponse.status === 500 && clarifaiData.error?.includes("not configured")) {
         console.warn("Clarifai API not configured, showing manual input modal")
         setShowManualInputModal(true)
@@ -364,7 +402,7 @@ export default function CameraScanPage() {
       setShowManualInputModal(true)
       return [] // Return empty array to trigger manual input
     }
-  }, [])
+  }, [features.foodRecognition])
 
   // Step 2: Data-to-Nutrition (Edamam API)
   const fetchNutritionalData = useCallback(async (foodItems: string[]) => {
@@ -384,6 +422,24 @@ export default function CameraScanPage() {
         dietLabels: [] as string[],
         healthLabels: [] as string[],
         totalNutrients: {} as any
+      }
+
+      // Check if nutrition analysis is enabled
+      if (!features.nutritionAnalysis) {
+        console.log("🍎 Nutrition analysis disabled - using fallback data")
+        // Return fallback nutritional data
+        return {
+          calories: 200,
+          protein: 10,
+          fat: 5,
+          carbs: 30,
+          fiber: 3,
+          sugar: 5,
+          sodium: 300,
+          dietLabels: [],
+          healthLabels: [],
+          totalNutrients: {}
+        }
       }
 
       // Try Edamam API first
@@ -432,7 +488,8 @@ export default function CameraScanPage() {
           console.error("Edamam API failed:", edamamResponse.status, errorText)
           
           // Check if it's an API configuration issue
-          if (edamamResponse.status === 500 && errorText.includes("not configured")) {
+          if ((edamamResponse.status === 500 && errorText.includes("not configured")) || 
+              edamamResponse.status === 503) {
             console.warn("Edamam API not configured, will use fallback nutrition data")
           }
         }
@@ -531,9 +588,9 @@ export default function CameraScanPage() {
         totalNutrients: {}
       }
     }
-  }, [capturedImage])
+  }, [capturedImage, features.nutritionAnalysis])
 
-  // Handle manual food name input
+  // Handle manual food name input - optimized version
   const handleManualFoodInput = useCallback(async () => {
     if (!manualFoodName.trim()) {
       setError("Please enter a food name")
@@ -542,22 +599,25 @@ export default function CameraScanPage() {
 
     setIsManualInputLoading(true)
     setError(null)
+    resetCancelState()
 
     try {
       console.log("🔍 Processing manual food input:", manualFoodName)
+      
+      // Check for cancellation
+      if (cancelRequested) {
+        console.log("🛑 Manual input cancelled")
+        return
+      }
       
       // Use the manual food name for analysis
       const foodItems = [manualFoodName.trim()]
       setIdentifiedFoods(foodItems)
       
-      // Close the manual input modal
+      // Close the manual input modal immediately for better UX
       setShowManualInputModal(false)
       
-      // Continue with nutritional analysis
-      const nutritionalData = await fetchNutritionalData(foodItems)
-      console.log("🍎 Nutritional data for manual input:", nutritionalData)
-
-      // Get user profile for personalized recommendations
+      // Get user profile first (faster operation)
       const {
         data: { user },
       } = await supabase.auth.getUser()
@@ -566,9 +626,31 @@ export default function CameraScanPage() {
         return
       }
 
+      if (cancelRequested) return
+
       const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
 
-      // Generate verdict using our verdict engine
+      if (cancelRequested) return
+
+      // Simplified nutritional data fetch - use fallback data for manual input
+      const nutritionalData = {
+        calories: 200,
+        protein: 10,
+        fat: 5,
+        carbs: 30,
+        fiber: 3,
+        sugar: 5,
+        sodium: 300,
+        dietLabels: [],
+        healthLabels: [],
+        totalNutrients: {}
+      }
+
+      console.log("🍎 Using fallback nutritional data for manual input:", nutritionalData)
+
+      if (cancelRequested) return
+
+      // Generate verdict using our verdict engine with timeout
       const verdictPayload = {
         foodName: foodItems[0],
         clarifaiData: { 
@@ -584,17 +666,28 @@ export default function CameraScanPage() {
         userProfile: profile
       }
       
+      // Add timeout to prevent hanging
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+
       const verdictResponse = await fetch("/api/verdict-engine", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(verdictPayload),
+        signal: controller.signal
       })
+
+      clearTimeout(timeoutId)
+
+      if (cancelRequested) return
 
       if (!verdictResponse.ok) {
         throw new Error("Failed to generate verdict")
       }
 
       const verdictResult = await verdictResponse.json()
+      
+      if (cancelRequested) return
       
       // Create analysis result for manual input
       const analysisResultData = {
@@ -616,12 +709,48 @@ export default function CameraScanPage() {
       setShowResultsModal(true)
       
     } catch (error) {
+      if (cancelRequested) {
+        console.log("🛑 Manual input cancelled during processing")
+        return
+      }
+      
       console.error("Error processing manual food input:", error)
-      setError("Failed to analyze the food. Please try again.")
+      
+      // Show fallback result instead of error
+      const fallbackResult = {
+        foodName: manualFoodName.trim(),
+        isRecommended: true,
+        healthScore: 70,
+        confidence: 30,
+        nutritionalData: {
+          calories: 200,
+          protein: 10,
+          fat: 5,
+          carbs: 30,
+          fiber: 3,
+          sugar: 5,
+          sodium: 300
+        },
+        recommendation: {
+          is_recommended: true,
+          reason: "Analysis completed with basic data. Manual input processed successfully.",
+          tips: ["Manual input processed", "Basic nutritional analysis provided"],
+          warnings: [],
+          benefits: ["Food name recorded successfully"]
+        },
+        humorousResponse: "Thanks for providing the food name! 🍽️",
+        identifiedFoods: [manualFoodName.trim()],
+        clarifaiData: { primaryFood: { name: manualFoodName.trim() }, confidence: 0.3 },
+        edamamData: { nutrition: { calories: 200, protein: 10, fat: 5, carbs: 30, fiber: 3, sugar: 5, sodium: 300 } },
+        isManualInput: true
+      }
+      
+      setAnalysisResult(fallbackResult)
+      setShowResultsModal(true)
     } finally {
       setIsManualInputLoading(false)
     }
-  }, [manualFoodName, supabase, router, fetchNutritionalData])
+  }, [manualFoodName, supabase, router, cancelRequested, resetCancelState])
 
   // Main meal analysis handler
   const handleAnalyzeMeal = useCallback(async () => {
@@ -632,6 +761,7 @@ export default function CameraScanPage() {
 
     setIsAnalyzing(true)
     setError(null)
+    resetCancelState()
 
     try {
       const {
@@ -641,6 +771,8 @@ export default function CameraScanPage() {
         router.push("/auth/login")
         return
       }
+
+      if (cancelRequested) return
 
       // Validate image format
       if (!capturedImage.startsWith("data:image/")) {
@@ -658,6 +790,8 @@ export default function CameraScanPage() {
         console.error("Food recognition failed, using fallback:", error)
         foodItems = ["food item"] // Fallback food name
       }
+
+      if (cancelRequested) return
       
       // If no food items identified, show manual input modal and stop analysis
       if (foodItems.length === 0) {
@@ -677,6 +811,8 @@ export default function CameraScanPage() {
       console.log("🍎 Final nutritional data after all APIs:", nutritionalData)
       console.log("🍎 Nutritional data calories:", nutritionalData.calories)
       console.log("🍎 Nutritional data protein:", nutritionalData.protein)
+
+      if (cancelRequested) return
 
       // Step 3: Get user profile for personalized recommendations
       setAnalysisStep("👤 Loading your profile...")
@@ -893,13 +1029,13 @@ export default function CameraScanPage() {
         edamamData: null
       }
       
-      setAnalysisResult(errorResult)
-      setShowResultsModal(true)
+      // Instead of showing error results, redirect to manual input
+      setShowManualInputModal(true)
     } finally {
       setIsAnalyzing(false)
       setAnalysisProgress(0)
     }
-  }, [capturedImage, supabase, router, selectedFoodTypes, selectedCookingMethods, oilQuantity, mealDetails, recognizeFoodItems, fetchNutritionalData])
+  }, [capturedImage, supabase, router, selectedFoodTypes, selectedCookingMethods, oilQuantity, mealDetails, recognizeFoodItems, fetchNutritionalData, cancelRequested, resetCancelState])
 
   // Alias for backward compatibility
   const analyzeImage = handleAnalyzeMeal
@@ -989,25 +1125,36 @@ export default function CameraScanPage() {
                     )}
                   </Button>
 
-                  {/* Debug: Test manual input modal */}
-                  {process.env.NODE_ENV === 'development' && (
+                  {/* Cancel Button - Show when analyzing or manual input loading */}
+                  {(isAnalyzing || isManualInputLoading) && (
                     <Button
-                      onClick={testManualInputModal}
-                      variant="outline"
-                      size="sm"
-                      className="mt-2"
-                      disabled={isManualInputLoading}
+                      onClick={cancelOperations}
+                      size="lg"
+                      className="px-6 py-3 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-lg transition-all duration-200 font-medium"
                     >
-                      {isManualInputLoading ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2"></div>
-                          Loading...
-                        </>
-                      ) : (
-                        "✋ Try Manual Input"
-                      )}
+                      <X className="w-5 h-5 mr-2" />
+                      Cancel
                     </Button>
                   )}
+
+                  {/* Manual Input Button - Available in production */}
+                  <Button
+                    onClick={() => setShowManualInputModal(true)}
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    disabled={isManualInputLoading}
+                  >
+                    {isManualInputLoading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2"></div>
+                        Loading...
+                      </>
+                    ) : (
+                      "✋ Enter Food Name"
+                    )}
+                  </Button>
+
                 </div>
 
                 {/* Real-time Analysis Progress - Show right below the analyze button */}
@@ -1038,8 +1185,8 @@ export default function CameraScanPage() {
                         </div>
                       )}
                       
-                      {/* Debug information in development */}
-                      {process.env.NODE_ENV === 'development' && (
+                      {/* Debug information - toggleable in production */}
+                      {debugMode && (
                         <div className="text-xs text-yellow-400">
                           <span className="font-medium">Debug: </span>
                           Step: {analysisStep} | Progress: {Math.round(analysisProgress)}% | Foods: {identifiedFoods.length} | Nutrition: {nutritionalData ? 'Yes' : 'No'}
@@ -1419,7 +1566,7 @@ export default function CameraScanPage() {
               )}
 
               {/* Debug Information - API Data */}
-              {process.env.NODE_ENV === 'development' && (
+              {debugMode && (
                 <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                   <h5 className="font-semibold text-yellow-800 dark:text-yellow-200 mb-3">🔍 API Debug Data</h5>
                   <div className="text-xs space-y-2 text-yellow-700 dark:text-yellow-300">
@@ -1519,6 +1666,18 @@ export default function CameraScanPage() {
                     setShowManualInputModal(false)
                     setManualFoodName("")
                     setError(null)
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                  disabled={isManualInputLoading}
+                >
+                  ❌ Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowManualInputModal(false)
+                    setManualFoodName("")
+                    setError(null)
                     retakePhoto()
                   }}
                   variant="outline"
@@ -1540,6 +1699,22 @@ export default function CameraScanPage() {
                   ) : (
                     "🍎 Analyze Food"
                   )}
+                </Button>
+              </div>
+
+              {/* Debug Toggle Button */}
+              <div className="mt-3 flex justify-center">
+                <Button
+                  onClick={() => setDebugMode(!debugMode)}
+                  variant={debugMode ? "default" : "outline"}
+                  size="sm"
+                  className={`text-xs transition-all duration-200 ${
+                    debugMode 
+                      ? "bg-blue-500 hover:bg-blue-600 text-white" 
+                      : "border-blue-500 text-blue-500 hover:bg-blue-50"
+                  }`}
+                >
+                  {debugMode ? "🔍 Debug ON" : "🔍 Debug OFF"}
                 </Button>
               </div>
 

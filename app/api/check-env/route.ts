@@ -1,52 +1,58 @@
+import { getEnvStatus } from "@/lib/env-validation"
+
 export async function GET() {
   try {
-    const envCheck = {
-      clarifai: {
-        apiKey: !!process.env.CLARIFAI_API_KEY,
-        workflowId: !!process.env.CLARIFAI_WORKFLOW_ID || true, // Optional, defaults to "General"
-        status: !!(process.env.CLARIFAI_API_KEY)
-      },
-      edamam: {
-        appId: !!process.env.EDAMAM_APP_ID,
-        appKey: !!process.env.EDAMAM_APP_KEY,
-        status: !!(process.env.EDAMAM_APP_ID && process.env.EDAMAM_APP_KEY)
-      },
-      openai: {
-        apiKey: !!process.env.OPENAI_API_KEY,
-        status: !!process.env.OPENAI_API_KEY
-      },
-      supabase: {
-        url: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-        anonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-        serviceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-        status: !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-      },
-      brave: {
-        apiKey: !!process.env.BRAVE_API_KEY,
-        status: !!process.env.BRAVE_API_KEY
-      }
-    }
-
-    const allRequired = envCheck.clarifai.status && envCheck.edamam.status && envCheck.openai.status && envCheck.supabase.status
-    const allOptional = envCheck.brave.status
-
+    const envStatus = getEnvStatus()
+    
     return Response.json({
       success: true,
-      environment: envCheck,
-      summary: {
-        required: allRequired,
-        optional: allOptional,
-        overall: allRequired
+      environment: {
+        clarifai: {
+          status: envStatus.config.clarifai.enabled,
+          workflowId: envStatus.config.clarifai.workflowId,
+          message: envStatus.config.clarifai.enabled ? "✅ Configured" : "❌ Missing CLARIFAI_API_KEY"
+        },
+        edamam: {
+          status: envStatus.config.edamam.enabled,
+          appId: !!envStatus.config.edamam.appId,
+          appKey: !!envStatus.config.edamam.appKey,
+          message: envStatus.config.edamam.enabled ? "✅ Configured" : "❌ Missing EDAMAM_APP_ID or EDAMAM_APP_KEY"
+        },
+        openai: {
+          status: envStatus.config.openai.enabled,
+          message: envStatus.config.openai.enabled ? "✅ Configured" : "❌ Missing OPENAI_API_KEY"
+        },
+        brave: {
+          status: envStatus.config.brave.enabled,
+          message: envStatus.config.brave.enabled ? "✅ Configured" : "❌ Missing BRAVE_API_KEY (Optional)"
+        },
+        supabase: {
+          status: envStatus.config.supabase.enabled,
+          url: !!envStatus.config.supabase.url,
+          anonKey: !!envStatus.config.supabase.anonKey,
+          serviceKey: !!envStatus.config.supabase.serviceKey,
+          message: envStatus.config.supabase.enabled ? "✅ Configured" : "❌ Missing Supabase credentials"
+        }
       },
-      message: allRequired 
-        ? "✅ All required environment variables are configured!" 
-        : "❌ Some required environment variables are missing. Check the details below.",
+      features: envStatus.features,
+      summary: {
+        required: envStatus.canRunBasicFeatures,
+        optional: envStatus.config.brave.enabled,
+        overall: envStatus.isFullyConfigured,
+        canRunBasicFeatures: envStatus.canRunBasicFeatures,
+        canRunAdvancedFeatures: envStatus.canRunAdvancedFeatures
+      },
+      message: envStatus.isFullyConfigured 
+        ? "✅ All environment variables are configured!" 
+        : envStatus.canRunBasicFeatures
+        ? "⚠️ Basic features available. Some advanced features may be limited."
+        : "❌ Critical environment variables missing. Please configure Supabase at minimum.",
       details: {
-        missing: {
-          clarifai: !envCheck.clarifai.status ? "CLARIFAI_API_KEY" : null,
-          edamam: !envCheck.edamam.status ? (!envCheck.edamam.appId ? "EDAMAM_APP_ID" : "EDAMAM_APP_KEY") : null,
-          openai: !envCheck.openai.status ? "OPENAI_API_KEY" : null,
-          supabase: !envCheck.supabase.status ? (!envCheck.supabase.url ? "NEXT_PUBLIC_SUPABASE_URL" : "NEXT_PUBLIC_SUPABASE_ANON_KEY") : null
+        missing: envStatus.missing,
+        recommendations: {
+          minimum: ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"],
+          recommended: ["CLARIFAI_API_KEY", "EDAMAM_APP_ID", "EDAMAM_APP_KEY"],
+          optional: ["OPENAI_API_KEY", "BRAVE_API_KEY"]
         }
       }
     })

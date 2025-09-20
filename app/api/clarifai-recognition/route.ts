@@ -1,3 +1,5 @@
+import { getEnvConfig } from "@/lib/env-validation"
+
 export async function POST(req: Request) {
   try {
     const { image } = await req.json()
@@ -11,21 +13,25 @@ export async function POST(req: Request) {
       return Response.json({ error: "Invalid base64 image data" }, { status: 400 })
     }
 
-    // Validate Clarifai API key and workflow ID
-    const CLARIFAI_API_KEY = process.env.CLARIFAI_API_KEY?.trim()
-    const CLARIFAI_WORKFLOW_ID = process.env.CLARIFAI_WORKFLOW_ID?.trim() || "General"
+    // Check environment configuration
+    const envConfig = getEnvConfig()
     
-    if (!CLARIFAI_API_KEY) {
+    if (!envConfig.clarifai.enabled) {
       console.error("❌ CLARIFAI_API_KEY is missing from environment variables")
       return Response.json({ 
         error: "Clarifai API key not configured. Please add CLARIFAI_API_KEY to your .env.local file.",
-        details: "Missing CLARIFAI_API_KEY environment variable"
-      }, { status: 500 })
+        details: "Missing CLARIFAI_API_KEY environment variable",
+        fallback: {
+          enabled: true,
+          message: "Food recognition is disabled. Users can still use manual input.",
+          alternative: "manual_input"
+        }
+      }, { status: 503 }) // Service Unavailable - feature disabled
     }
 
     try {
       // Use Clarifai Workflow API instead of direct model API
-      const url = `https://api.clarifai.com/v2/workflows/${CLARIFAI_WORKFLOW_ID}/results`
+      const url = `https://api.clarifai.com/v2/workflows/${envConfig.clarifai.workflowId}/results`
       
       const requestBody = {
         inputs: [
@@ -42,7 +48,7 @@ export async function POST(req: Request) {
       const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Authorization': `Key ${CLARIFAI_API_KEY}`,
+          'Authorization': `Key ${envConfig.clarifai.apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(requestBody)

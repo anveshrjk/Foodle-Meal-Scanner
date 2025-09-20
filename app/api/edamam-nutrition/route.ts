@@ -1,3 +1,5 @@
+import { getEnvConfig } from "@/lib/env-validation"
+
 export async function POST(req: Request) {
   try {
     const { foodName, image } = await req.json()
@@ -6,20 +8,28 @@ export async function POST(req: Request) {
       return Response.json({ error: "Food name required" }, { status: 400 })
     }
 
-    const EDAMAM_APP_ID = process.env.EDAMAM_APP_ID?.trim()
-    const EDAMAM_APP_KEY = process.env.EDAMAM_APP_KEY?.trim()
+    // Check environment configuration
+    const envConfig = getEnvConfig()
 
-    if (!EDAMAM_APP_ID || !EDAMAM_APP_KEY) {
-      console.error("❌ Missing Edamam credentials", { EDAMAM_APP_ID: !!EDAMAM_APP_ID, EDAMAM_APP_KEY: !!EDAMAM_APP_KEY })
+    if (!envConfig.edamam.enabled) {
+      console.error("❌ Missing Edamam credentials", { 
+        EDAMAM_APP_ID: !!envConfig.edamam.appId, 
+        EDAMAM_APP_KEY: !!envConfig.edamam.appKey 
+      })
       return Response.json({ 
         error: "Edamam API credentials not configured. Please add EDAMAM_APP_ID and EDAMAM_APP_KEY to your .env.local file.",
-        details: `Missing: ${!EDAMAM_APP_ID ? 'EDAMAM_APP_ID' : ''} ${!EDAMAM_APP_KEY ? 'EDAMAM_APP_KEY' : ''}`.trim()
-      }, { status: 500 })
+        details: `Missing: ${!envConfig.edamam.appId ? 'EDAMAM_APP_ID' : ''} ${!envConfig.edamam.appKey ? 'EDAMAM_APP_KEY' : ''}`.trim(),
+        fallback: {
+          enabled: true,
+          message: "Nutrition analysis is disabled. Using fallback nutritional data.",
+          alternative: "fallback_nutrition"
+        }
+      }, { status: 503 }) // Service Unavailable - feature disabled
     }
 
     // Search for food in Edamam database
     const searchQuery = encodeURIComponent(foodName)
-    const searchUrl = `https://api.edamam.com/api/food-database/v2/parser?app_id=${EDAMAM_APP_ID}&app_key=${EDAMAM_APP_KEY}&ingr=${searchQuery}&nutrition-type=cooking`
+    const searchUrl = `https://api.edamam.com/api/food-database/v2/parser?app_id=${envConfig.edamam.appId}&app_key=${envConfig.edamam.appKey}&ingr=${searchQuery}&nutrition-type=cooking`
 
     try {
       const searchResponse = await fetch(searchUrl, {
