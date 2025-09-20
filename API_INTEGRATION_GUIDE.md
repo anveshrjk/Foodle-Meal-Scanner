@@ -5,10 +5,13 @@
 To make the food recognition and nutritional analysis work, you need to set up the following API keys in your Vercel environment variables:
 
 ### 1. Clarifai AI (Food Recognition)
-- **Purpose**: Recognizes food items in images
+- **Purpose**: Recognizes food items in images using workflow-based analysis
 - **Sign up**: https://www.clarifai.com/
 - **API Key**: Get from your Clarifai dashboard
-- **Environment Variable**: `CLARIFAI_API_KEY`
+- **Workflow ID**: Use "General" for default workflow or create custom workflow
+- **Environment Variables**: 
+  - `CLARIFAI_API_KEY`
+  - `CLARIFAI_WORKFLOW_ID` (optional, defaults to "General")
 
 ### 2. Edamam Nutrition API (Nutritional Data)
 - **Purpose**: Provides detailed nutritional information
